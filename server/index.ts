@@ -1,10 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
-import { createApp, type Req } from './app'
-import { SqliteStore } from './store-sqlite'
-import { PgStore } from './store-pg'
-import { makeSms } from './sms'
+import { createApp, type Req } from './app.js'
+import { SqliteStore } from './store-sqlite.js'
+import { PgStore } from './store-pg.js'
+import { makeSms } from './sms.js'
 
 /** Self-hosted entry: one Node process serving the built app and the API. SQLite by default, Postgres with DATABASE_URL. */
 const PORT = Number(process.env.PORT ?? 8787)

@@ -1,6 +1,6 @@
-import { canNudge, goingIds, isHostOf, person, rsvpOf, rsvpsFor, seatsLeft, waitlistIds } from './select'
-import { when } from './format'
-import type { Club, Debrief, Message, Person, Photo, Plan, PlanUpdate, Poll, Post, ReminderKind, Report, Role, Rsvp, State, Text, TextKind, UpdateKind } from './types'
+import { canNudge, goingIds, isHostOf, person, rsvpOf, rsvpsFor, seatsLeft, waitlistIds } from './select.js'
+import { when } from './format.js'
+import type { Club, Debrief, Message, Person, Photo, Plan, PlanUpdate, Poll, Post, ReminderKind, Report, Role, Rsvp, State, Text, TextKind, UpdateKind } from './types.js'
 
 export function uid(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`

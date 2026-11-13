@@ -1,9 +1,9 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { Club, Message, Person, Plan, Rsvp, Text, Ticket } from '../src/core/types'
-import { seedWorld } from './seed-world'
-import { userToPerson, type Store, type User, type UserPatch, type World, type WorldRecord } from './store'
+import type { Club, Message, Person, Plan, Rsvp, Text, Ticket } from '../src/core/types.js'
+import { seedWorld } from './seed-world.js'
+import { userToPerson, type Store, type User, type UserPatch, type World, type WorldRecord } from './store.js'
 
 const KINDS = ['plans', 'clubs', 'rsvps', 'tickets'] as const
 

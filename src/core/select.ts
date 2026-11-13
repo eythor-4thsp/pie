@@ -1,4 +1,4 @@
-import type { Audience, Club, Person, Plan, ReminderKind, Rsvp, State, Text } from './types'
+import type { Audience, Club, Person, Plan, ReminderKind, Rsvp, State, Text } from './types.js'
 
 export function personName(state: State, id: string): string {
   if (id === 'you') return state.you.name || 'you'

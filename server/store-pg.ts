@@ -1,7 +1,7 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import type { Person } from '../src/core/types'
-import { seedWorld } from './seed-world'
-import { userToPerson, type Store, type User, type UserPatch, type World, type WorldRecord } from './store'
+import type { Person } from '../src/core/types.js'
+import { seedWorld } from './seed-world.js'
+import { userToPerson, type Store, type User, type UserPatch, type World, type WorldRecord } from './store.js'
 
 type Row = Record<string, unknown>
 

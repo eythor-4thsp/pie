@@ -1,11 +1,11 @@
 import { randomBytes, randomInt } from 'node:crypto'
-import { allowed, reduce, uid, type Action } from '../src/core/reducer'
-import { dueReminders, redactPlan } from '../src/core/select'
-import { when } from '../src/core/format'
-import type { State } from '../src/core/types'
-import { normalizePhone, type Store, type User, type World } from './store'
-import { ConsoleSms, type SmsTransport } from './sms'
-import { deref, fromClientId, personalize } from './personalize'
+import { allowed, reduce, uid, type Action } from '../src/core/reducer.js'
+import { dueReminders, redactPlan } from '../src/core/select.js'
+import { when } from '../src/core/format.js'
+import type { State } from '../src/core/types.js'
+import { normalizePhone, type Store, type User, type World } from './store.js'
+import { ConsoleSms, type SmsTransport } from './sms.js'
+import { deref, fromClientId, personalize } from './personalize.js'
 
 export interface AppOptions {
   store: Store

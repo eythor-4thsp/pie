@@ -1,6 +1,6 @@
-import { canSee, isHostOf, redactPlan } from '../src/core/select'
-import type { Plan, State } from '../src/core/types'
-import type { User, World } from './store'
+import { canSee, isHostOf, redactPlan } from '../src/core/select.js'
+import type { Plan, State } from '../src/core/types.js'
+import type { User, World } from './store.js'
 
 /**
  * The client always calls the current user "you". The server keeps real ids and

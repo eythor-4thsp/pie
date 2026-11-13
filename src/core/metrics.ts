@@ -1,6 +1,6 @@
-import { goingIds, hostedBy, rsvpsFor } from './select'
-import { isPast } from './format'
-import type { Plan, State } from './types'
+import { goingIds, hostedBy, rsvpsFor } from './select.js'
+import { isPast } from './format.js'
+import type { Plan, State } from './types.js'
 
 export interface GatheringMetrics {
   plan: Plan

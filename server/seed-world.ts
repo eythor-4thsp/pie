@@ -1,5 +1,5 @@
-import { buildSeed, SEED_PEOPLE } from '../src/core/seed'
-import { normalizePhone, type User, type World } from './store'
+import { buildSeed, SEED_PEOPLE } from '../src/core/seed.js'
+import { normalizePhone, type User, type World } from './store.js'
 
 /** Demo data for a fresh pilot database: the fictional club and its people, each with a phone that can log in. */
 export function seedWorld(now = new Date().toISOString()): { users: User[]; world: World } {

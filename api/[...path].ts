@@ -1,6 +1,6 @@
-import { createApp, type Req } from '../server/app'
-import { PgStore } from '../server/store-pg'
-import { makeSms } from '../server/sms'
+import { createApp, type Req } from '../server/app.js'
+import { PgStore } from '../server/store-pg.js'
+import { makeSms } from '../server/sms.js'
 
 /**
  * Vercel entry: every /api/* request lands here. Needs DATABASE_URL (Neon Postgres).

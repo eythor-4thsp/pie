@@ -1,4 +1,4 @@
-import type { Person, State } from '../src/core/types'
+import type { Person, State } from '../src/core/types.js'
 
 /** The server's world: the same State shape the client runs, minus a point of view. */
 export type World = Omit<State, 'you'>

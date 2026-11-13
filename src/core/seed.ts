@@ -1,4 +1,4 @@
-import type { Club, Message, Person, Plan, Rsvp, State, Text, Ticket } from './types'
+import type { Club, Message, Person, Plan, Rsvp, State, Text, Ticket } from './types.js'
 
 const TZ = 'America/New_York'
 
