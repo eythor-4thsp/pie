@@ -6,6 +6,7 @@ import { Avatar, Faces } from '../components/Avatar'
 import { Icon, PieMark } from '../components/Icon'
 import { PlanCard, PlanRow } from '../components/PlanCard'
 import { Empty, SectionTitle, Sheet, Switch, TopBar, useToast } from '../components/ui'
+import { ClubForm } from './ClubNew'
 
 export function Club() {
   const { id = '' } = useParams()
@@ -18,6 +19,7 @@ export function Club() {
   const [post, setPost] = useState('')
   const [reporting, setReporting] = useState<string | null>(null)
   const [reason, setReason] = useState('')
+  const [editing, setEditing] = useState(false)
 
   if (!club) {
     return (
@@ -55,7 +57,16 @@ export function Club() {
 
   return (
     <div className="screen">
-      <TopBar back={me === 'you' ? '/' : '/host'} />
+      <TopBar
+        back={me === 'you' ? '/' : '/host'}
+        right={
+          isOrganizer ? (
+            <button type="button" className="icon-btn" aria-label="edit club" onClick={() => setEditing(true)}>
+              <Icon name="edit" />
+            </button>
+          ) : undefined
+        }
+      />
       <div className="pad">
         <div className="card" style={{ background: 'var(--lime)', color: 'var(--bg)', padding: '28px 20px 20px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', right: -40, top: -50, opacity: 0.18 }}>
@@ -309,6 +320,18 @@ export function Club() {
             stay
           </button>
         </div>
+      </Sheet>
+
+      <Sheet open={editing} onClose={() => setEditing(false)} title="about the club">
+        <ClubForm
+          initial={{ name: club.name, cadence: club.cadence, neighborhood: club.neighborhood, description: club.description }}
+          submitLabel="save"
+          onSave={(patch) => {
+            void dispatch({ type: 'updateClub', clubId: club.id, patch })
+            setEditing(false)
+            toast('saved', 'check')
+          }}
+        />
       </Sheet>
 
       <Sheet open={!!reporting} onClose={() => setReporting(null)} title={`report ${reporting ? person(state, reporting).name : ''}`}>

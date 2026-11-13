@@ -5,6 +5,8 @@ export interface Person {
   name: string
   tone: Tone
   phone?: string
+  /** Asked not to be shown as a familiar face on discovery cards. */
+  hideFace?: boolean
   /** Opted out of future club invitations. */
   optOut?: boolean
   /** Blocked by an organizer; never invited, never listed. */
@@ -51,6 +53,30 @@ export interface Debrief {
   notes: string
 }
 
+export interface PollOption {
+  id: string
+  text: string
+}
+
+export interface Poll {
+  id: string
+  byId: string
+  question: string
+  options: PollOption[]
+  votes: Record<string, string>
+  at: string
+  closed?: boolean
+}
+
+export interface Photo {
+  id: string
+  byId: string
+  src: string
+  at: string
+}
+
+export type ReminderKind = 'day' | 'soon'
+
 export interface Plan {
   id: string
   clubId?: string
@@ -80,6 +106,12 @@ export interface Plan {
   repeatOf?: string
   description?: string
   debrief?: Debrief
+  polls: Poll[]
+  photos: Photo[]
+  /** Reminder texts already sent: the day before, and two hours before. */
+  remindersSent: ReminderKind[]
+  /** When each pending guest was last nudged. */
+  nudgedAt: Record<string, string>
   /** Set on a restricted plan the viewer may only preview. */
   restricted?: boolean
 }
@@ -110,7 +142,7 @@ export interface Ticket {
   at: string
 }
 
-export type TextKind = 'invite' | 'update' | 'cancel' | 'offer' | 'receipt' | 'other'
+export type TextKind = 'invite' | 'update' | 'cancel' | 'offer' | 'receipt' | 'reminder' | 'nudge' | 'other'
 
 /** One outbound text message. The transport (real or simulated) settles its status. */
 export interface Text {
@@ -164,6 +196,8 @@ export interface You {
   phone: string
   role: Role
   showFaces: boolean
+  /** Hosts and people you follow: the relationship behind familiar faces. */
+  followIds: string[]
 }
 
 export interface State {

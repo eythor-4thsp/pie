@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import { buildSeed } from '../core/seed'
+import { dueReminders } from '../core/select'
 import { reduce, type Action } from '../core/reducer'
 import type { State } from '../core/types'
 import { api, type Me } from './api'
@@ -32,11 +33,19 @@ function load(): State {
   return buildSeed()
 }
 
+export interface PendingError {
+  message: string
+  action: LocalAction
+}
+
 interface Ctx {
   state: State
   mode: Mode
   auth: AuthStatus
   me: Me | null
+  /** The last action that could not be saved, so the person can retry it. */
+  error: PendingError | null
+  clearError: () => void
   dispatch: (a: LocalAction) => Promise<void>
   refresh: () => Promise<void>
   invitePhone: (planId: string, phone: string, name: string) => Promise<void>
@@ -56,6 +65,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>('local')
   const [auth, setAuth] = useState<AuthStatus>(import.meta.env.VITE_MODE === 'local' ? 'anon' : 'loading')
   const [me, setMe] = useState<Me | null>(null)
+  const [error, setError] = useState<PendingError | null>(null)
   const modeRef = useRef<Mode>('local')
   const scheduled = useRef(new Set<string>())
 
@@ -118,11 +128,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer)
   }, [state.texts])
 
-  // Offers and checkout holds expire on a clock in both modes; the server also runs this itself.
+  // Offers and checkout holds expire on a clock, and reminder texts go out the day before and two hours before.
+  // The server runs both itself; local mode runs them here.
+  const stateRef = useRef(state)
+  stateRef.current = state
   useEffect(() => {
     const tick = () => {
       if (modeRef.current === 'remote') return
-      localDispatch({ type: 'expire', at: new Date().toISOString() })
+      const at = new Date().toISOString()
+      localDispatch({ type: 'expire', at })
+      for (const r of dueReminders(stateRef.current, at)) localDispatch({ type: 'remind', planId: r.planId, which: r.which, at })
     }
     tick()
     const id = window.setInterval(tick, 30000)
@@ -158,15 +173,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     if (modeRef.current === 'remote') {
       if (action.type === 'reset' || action.type === 'replace' || action.type === 'role') return
-      if (action.type === 'you') localDispatch(action)
-      const next = await api.act(action as Action)
-      localDispatch({ type: 'replace', state: next })
-      // Texts settle a moment after the action; pick up sent/failed without waiting for the next poll.
-      if (next.texts.some((t) => t.status === 'pending')) window.setTimeout(() => void refresh(), 1500)
+      if (action.type === 'you' || action.type === 'follow') localDispatch(action)
+      try {
+        const next = await api.act(action as Action)
+        localDispatch({ type: 'replace', state: next })
+        setError(null)
+        // Texts settle a moment after the action; pick up sent/failed without waiting for the next poll.
+        if (next.texts.some((t) => t.status === 'pending')) window.setTimeout(() => void refresh(), 1500)
+      } catch (e) {
+        const message = (e as Error).message
+        // A refusal (full, forbidden) is final; a network failure is recoverable.
+        if (/failed to fetch|network|load failed/i.test(message)) setError({ message: "couldn't reach pie. nothing was changed.", action })
+        throw e
+      }
       return
     }
     localDispatch(action)
   }, [refresh])
+  const clearError = useCallback(() => setError(null), [])
 
   const invitePhone = useCallback(async (planId: string, phone: string, name: string) => {
     if (modeRef.current !== 'remote') return
@@ -188,8 +212,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<Ctx>(
-    () => ({ state, mode, auth, me, dispatch, refresh, invitePhone, startLogin, verifyLogin, logout }),
-    [state, mode, auth, me, dispatch, refresh, invitePhone, startLogin, verifyLogin, logout],
+    () => ({ state, mode, auth, me, error, clearError, dispatch, refresh, invitePhone, startLogin, verifyLogin, logout }),
+    [state, mode, auth, me, error, clearError, dispatch, refresh, invitePhone, startLogin, verifyLogin, logout],
   )
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

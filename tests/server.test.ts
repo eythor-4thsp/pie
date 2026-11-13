@@ -176,3 +176,40 @@ test('inviting by phone creates the guest and sends one text', async () => {
   assert.equal(mine.plans['friday-dumplings'].address, '112 Christopher St', 'the invited phone sees the private details')
   assert.ok(mine.texts.some((t) => t.kind === 'invite'))
 })
+
+test('a revoked invitation stops the link from showing private details', async () => {
+  const maya = new Session()
+  await maya.login('+1 212 555 0101', '')
+  const r = await maya.act({ type: 'uninvite', planId: 'friday-dumplings', personId: 'sam', at: 'x' })
+  assert.equal(r.status, 200)
+  const sam = new Session()
+  await sam.login('+1 212 555 0104', '')
+  const mine = (await sam.state()).data
+  assert.ok(mine.plans['friday-dumplings'].restricted, 'Sam now sees only the preview')
+  assert.equal(mine.plans['friday-dumplings'].address, '')
+})
+
+test('the shared link serves a public preview and nothing private', async () => {
+  const res = await fetch(`${BASE}/p/noor-birthday`)
+  assert.equal(res.status, 200)
+  const html = await res.text()
+  assert.ok(html.includes("Noor&#39;s birthday dinner"))
+  assert.ok(html.includes('West Village'))
+  assert.ok(!html.includes('Grove St'), 'no address in the preview')
+  assert.ok(!html.includes('Reservation under'), 'no host note in the preview')
+})
+
+test('following is per person and drives familiar faces both ways', async () => {
+  const guest = new Session()
+  await guest.login('+1 212 555 0100', '')
+  const on = await guest.act({ type: 'follow', personId: 'jules', on: true })
+  assert.equal(on.status, 200)
+  assert.ok(on.data.you.followIds.includes('jules'))
+  const off = await guest.act({ type: 'follow', personId: 'jules', on: false })
+  assert.ok(!off.data.you.followIds.includes('jules'))
+  const priya = new Session()
+  await priya.login('+1 212 555 0103', '')
+  await priya.act({ type: 'you', patch: { showFaces: false } })
+  const seen = (await guest.state()).data
+  assert.equal(seen.people['priya'].hideFace, true, 'Priya asked not to be shown')
+})

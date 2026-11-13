@@ -3,11 +3,12 @@ import { HashRouter, MemoryRouter, Navigate, Route, Routes, useLocation, useNavi
 import { StoreProvider, useStore } from './lib/store'
 import { ToastProvider } from './components/ui'
 import { TabBar } from './components/TabBar'
-import { PieMark } from './components/Icon'
+import { Icon, PieMark } from './components/Icon'
 import { Plans } from './screens/Plans'
 import { Plan } from './screens/Plan'
 import { Thread } from './screens/Thread'
 import { Club } from './screens/Club'
+import { ClubNew } from './screens/ClubNew'
 import { Discover } from './screens/Discover'
 import { You } from './screens/You'
 import { HostHome } from './screens/HostHome'
@@ -47,6 +48,27 @@ function RoleBanner() {
   )
 }
 
+/** The recoverable state: an action that never reached the server, with one tap to send it again. */
+function ErrorBanner() {
+  const { error, clearError, dispatch } = useStore()
+  if (!error) return null
+  return (
+    <div className="role-banner" role="alert" style={{ background: 'var(--cherry-dim)', borderColor: 'rgba(255,43,94,0.4)', color: 'var(--text)', fontFamily: 'var(--sans)', fontSize: 13 }}>
+      <span className="row gap-8">
+        <Icon name="alert" size={14} stroke="#FF2B5E" /> {error.message}
+      </span>
+      <span className="row gap-12">
+        <button type="button" className="text-btn lime" onClick={() => dispatch(error.action).catch(() => {})}>
+          try again
+        </button>
+        <button type="button" className="text-btn" onClick={clearError} aria-label="dismiss">
+          <Icon name="x" size={14} />
+        </button>
+      </span>
+    </div>
+  )
+}
+
 function ComposerRoute({ mode }: { mode: 'new' | 'edit' | 'again' }) {
   const { id = '' } = useParams()
   return <Composer key={`${mode}:${id}`} mode={mode} />
@@ -71,6 +93,8 @@ function Splash() {
   )
 }
 
+const guarded = (el: ReactNode) => <RequireUser>{el}</RequireUser>
+
 function Shell() {
   const { auth } = useStore()
   if (auth === 'loading') return <Splash />
@@ -78,77 +102,23 @@ function Shell() {
     <div className="app">
       <ScrollToTop />
       <RoleBanner />
+      <ErrorBanner />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <RequireUser>
-              <Plans />
-            </RequireUser>
-          }
-        />
+        <Route path="/" element={guarded(<Plans />)} />
         <Route path="/login" element={<Login />} />
         <Route path="/p/:id" element={<Plan />} />
         <Route path="/p/:id/chat" element={<Thread />} />
         <Route path="/p/:id/checkout" element={<Checkout />} />
         <Route path="/club/:id" element={<Club />} />
         <Route path="/discover" element={<Discover />} />
-        <Route
-          path="/you"
-          element={
-            <RequireUser>
-              <You />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host"
-          element={
-            <RequireUser>
-              <HostHome />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host/insights"
-          element={
-            <RequireUser>
-              <Insights />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host/new"
-          element={
-            <RequireUser>
-              <ComposerRoute mode="new" />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host/p/:id"
-          element={
-            <RequireUser>
-              <Roster />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host/p/:id/edit"
-          element={
-            <RequireUser>
-              <ComposerRoute mode="edit" />
-            </RequireUser>
-          }
-        />
-        <Route
-          path="/host/again/:id"
-          element={
-            <RequireUser>
-              <ComposerRoute mode="again" />
-            </RequireUser>
-          }
-        />
+        <Route path="/you" element={guarded(<You />)} />
+        <Route path="/host" element={guarded(<HostHome />)} />
+        <Route path="/host/insights" element={guarded(<Insights />)} />
+        <Route path="/host/club/new" element={guarded(<ClubNew />)} />
+        <Route path="/host/new" element={guarded(<ComposerRoute mode="new" />)} />
+        <Route path="/host/p/:id" element={guarded(<Roster />)} />
+        <Route path="/host/p/:id/edit" element={guarded(<ComposerRoute mode="edit" />)} />
+        <Route path="/host/again/:id" element={guarded(<ComposerRoute mode="again" />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <TabBar />

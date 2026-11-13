@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { actorId, audienceLabel, goingIds, isHostOf, now, person, rsvpsFor, seatsLeft, textsFor, ticketOf, useStore } from '../lib/store'
+import { actorId, audienceLabel, canNudge, goingIds, isHostOf, now, person, rsvpsFor, seatsLeft, textsFor, ticketOf, useStore } from '../lib/store'
 import { clock, isPast, money, plural, time, toInputValue, fromInputValue, when } from '../core/format'
 import { share } from '../lib/pwa'
 import type { Debrief, Person, Recipient } from '../core/types'
@@ -22,6 +22,7 @@ export function Roster() {
   const [inviting, setInviting] = useState(false)
   const [helpers, setHelpers] = useState(false)
   const [debriefing, setDebriefing] = useState(false)
+  const [removing, setRemoving] = useState<string | null>(null)
 
   if (!plan || !isHostOf(plan, me)) {
     return (
@@ -46,7 +47,7 @@ export function Roster() {
   const seats = seatsLeft(state, plan.id)
   const past = isPast(plan.startsAt)
   const paid = plan.payment === 'checkout' && plan.cost > 0
-  const shareUrl = `${location.origin}${location.pathname}#/p/${plan.id}`
+  const shareUrl = mode === 'remote' ? `${location.origin}/p/${plan.id}` : `${location.origin}${location.pathname}#/p/${plan.id}`
   const recipients = goingIds(state, plan.id).filter((pid) => pid !== plan.hostId)
   const texts = textsFor(state, plan.id)
   const revenue = Object.values(state.tickets).filter((t) => t.planId === plan.id && t.status === 'paid').reduce((n, t) => n + t.amount, 0)
@@ -167,6 +168,38 @@ export function Roster() {
         </div>
       </section>
 
+      {plan.status === 'published' && !past && (
+        <section className="section pad">
+          <div className="card stack gap-8">
+            <span className="eyebrow">
+              <Icon name="clock" size={12} /> reminder texts to everyone going
+            </span>
+            {(['day', 'soon'] as const).map((which) => {
+              const sent = plan.remindersSent.includes(which)
+              return (
+                <div key={which} className="row" style={{ justifyContent: 'space-between' }}>
+                  <span className="small">{which === 'day' ? 'the day before' : 'two hours before'}</span>
+                  {sent ? (
+                    <span className="chip lime">sent</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => {
+                        void dispatch({ type: 'remind', planId: plan.id, which, at: now() })
+                        toast(`reminder going to ${recipients.length}`, 'send')
+                      }}
+                    >
+                      goes out automatically · send now
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {paid && (
         <section className="section pad">
           <div className="card stack gap-6">
@@ -196,6 +229,13 @@ export function Roster() {
                 key={r.personId}
                 p={person(state, r.personId)}
                 note={`said yes ${clock(r.at)}${t?.status === 'paid' ? ` · paid $${t.amount}` : ''}`}
+                extra={
+                  owner && !past ? (
+                    <button type="button" className="text-btn danger" onClick={() => setRemoving(r.personId)}>
+                      remove
+                    </button>
+                  ) : undefined
+                }
                 chip={
                   t?.status === 'paid' && owner ? (
                     <button
@@ -239,9 +279,41 @@ export function Roster() {
         <section className="section pad">
           <SectionTitle>invited, no answer yet · {pending.length}</SectionTitle>
           <div className="list">
-            {pending.map((pid) => (
-              <Row key={pid} p={person(state, pid)} note="sees the current plan when they open the link" chip={<span className="chip muted">pending</span>} />
-            ))}
+            {pending.map((pid) => {
+              const opened = plan.viewerIds.includes(pid)
+              const nudgeable = canNudge(plan, pid, now())
+              return (
+                <Row
+                  key={pid}
+                  p={person(state, pid)}
+                  note={opened ? 'opened the link · no answer yet' : "hasn't opened the link yet"}
+                  extra={
+                    !past ? (
+                      <span className="row gap-10">
+                        <button
+                          type="button"
+                          className="text-btn lime"
+                          disabled={!nudgeable}
+                          style={!nudgeable ? { opacity: 0.5, borderBottomColor: 'transparent' } : undefined}
+                          onClick={() => {
+                            void dispatch({ type: 'nudge', planId: plan.id, personId: pid, at: now() })
+                            toast(`nudged ${person(state, pid).name}`, 'send')
+                          }}
+                        >
+                          {nudgeable ? 'nudge' : 'nudged today'}
+                        </button>
+                        {owner && (
+                          <button type="button" className="text-btn danger" onClick={() => setRemoving(pid)}>
+                            remove
+                          </button>
+                        )}
+                      </span>
+                    ) : undefined
+                  }
+                  chip={<span className="chip muted">pending</span>}
+                />
+              )
+            })}
           </div>
         </section>
       )}
@@ -416,6 +488,26 @@ export function Roster() {
         />
       </Sheet>
 
+      <Sheet open={!!removing} onClose={() => setRemoving(null)} title={`remove ${removing ? person(state, removing).name : ''}?`}>
+        <p className="body muted">Their invitation is revoked. The link stops showing them the address, the roster, and the thread. If they had a seat, it goes to the next person in line.</p>
+        <div className="stack gap-10 mt-16">
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => {
+              if (removing) void dispatch({ type: 'uninvite', planId: plan.id, personId: removing, at: now() })
+              setRemoving(null)
+              toast('removed. access rechecked')
+            }}
+          >
+            remove them
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => setRemoving(null)}>
+            keep them
+          </button>
+        </div>
+      </Sheet>
+
       <Sheet open={helpers} onClose={() => setHelpers(false)} title="who helps host?">
         <p className="small muted">A helper sees this roster, can pin the meeting point, invite people, and mark who came. Only you can cancel or refund. It applies to this dinner only.</p>
         <div className="list mt-12">
@@ -436,13 +528,14 @@ export function Roster() {
   )
 }
 
-function Row({ p, note, chip }: { p: Person; note: string; chip?: React.ReactNode }) {
+function Row({ p, note, chip, extra }: { p: Person; note: string; chip?: React.ReactNode; extra?: React.ReactNode }) {
   return (
     <div className="list-item">
       <Avatar person={p} size={32} />
       <div className="stack gap-4 grow">
         <span className="small strong">{p.name || 'new guest'}</span>
         <span className="eyebrow">{note}</span>
+        {extra && <span className="row gap-10 mt-8">{extra}</span>}
       </div>
       {chip}
     </div>

@@ -42,6 +42,13 @@ Production: `npm run build && npm run build:server && npm start`, or the Dockerf
 | Organizer insights: seats filled, show-up rate, guest conversion, new vs returning, host effort from the debrief, repeat attendance, compare two dinners, discovery supply gate | `src/screens/Insights.tsx`, `src/core/metrics.ts` |
 | Host debrief and attendance reconciliation after each dinner | `Roster.tsx` |
 | Phone sign-in, sessions, personalized state, access rules, SQLite persistence, audit log, SMS transport | `server/` |
+| Nudge a pending guest once a day; see who opened the link; revoke an invitation and recheck access | `Roster.tsx`, `reducer.ts` |
+| Reminder texts the day before and two hours before, sent once by the server clock (or on demand) | `dueReminders` in `select.ts`, `server/index.ts` |
+| Polls in the thread for decisions the group would otherwise settle over outside texts; photos after the dinner | `src/screens/Thread.tsx`, `Plan.tsx` |
+| Follow a host; familiar faces require the relationship and the other person's permission; "hosts i follow" filter | `Discover.tsx`, `You.tsx`, `familiarFaces` in `select.ts` |
+| Start a club, edit it, announcements, directory, reports and blocks | `src/screens/ClubNew.tsx`, `Club.tsx` |
+| Shared-link preview: `/p/:id` serves public Open Graph tags (title, host, date, neighborhood) and opens the app; texts use it | `servePreview` in `server/index.ts` |
+| Recoverable state when the connection drops: the failed action is kept and can be retried with one tap | `src/lib/store.tsx`, `ErrorBanner` in `App.tsx` |
 | Install prompt, standalone detection, iOS instructions, service worker, manifest | `src/lib/pwa.ts`, `vite.config.ts` |
 
 ## How it is built

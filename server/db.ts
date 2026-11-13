@@ -11,6 +11,7 @@ export interface User {
   tone: Person['tone']
   createdAt: string
   showFaces: boolean
+  follows: string[]
 }
 
 /** The server's world: the same State shape the client runs, minus a point of view. */
@@ -35,6 +36,11 @@ export class Db {
       create table if not exists audit (id integer primary key autoincrement, at text not null, user_id text, action text not null);
       create table if not exists meta (key text primary key, value text not null);
     `)
+    try {
+      this.db.exec("alter table users add column follows text not null default '[]'")
+    } catch {
+      /* column exists */
+    }
   }
 
   /* ---------- users & auth ---------- */
@@ -59,8 +65,9 @@ export class Db {
       .run(u.id, u.phone, u.name, u.tone, u.createdAt, u.showFaces ? 1 : 0)
   }
 
-  updateUser(id: string, patch: Partial<Pick<User, 'name' | 'showFaces'>> & { optOut?: boolean; blocked?: boolean }): void {
+  updateUser(id: string, patch: Partial<Pick<User, 'name' | 'showFaces' | 'follows'>> & { optOut?: boolean; blocked?: boolean }): void {
     if (patch.name !== undefined) this.db.prepare('update users set name = ? where id = ?').run(patch.name, id)
+    if (patch.follows !== undefined) this.db.prepare('update users set follows = ? where id = ?').run(JSON.stringify(patch.follows), id)
     if (patch.showFaces !== undefined) this.db.prepare('update users set show_faces = ? where id = ?').run(patch.showFaces ? 1 : 0, id)
     if (patch.optOut !== undefined) this.db.prepare('update users set opt_out = ? where id = ?').run(patch.optOut ? 1 : 0, id)
     if (patch.blocked !== undefined) this.db.prepare('update users set blocked = ? where id = ?').run(patch.blocked ? 1 : 0, id)
@@ -70,7 +77,7 @@ export class Db {
     const out: Record<string, Person> = {}
     for (const row of this.db.prepare('select * from users').all() as Record<string, unknown>[]) {
       const u = toUser(row)
-      out[u.id] = { id: u.id, name: u.name, tone: u.tone, phone: u.phone, optOut: !!row.opt_out, blocked: !!row.blocked }
+      out[u.id] = { id: u.id, name: u.name, tone: u.tone, phone: u.phone, optOut: !!row.opt_out, blocked: !!row.blocked, hideFace: !u.showFaces }
     }
     return out
   }
@@ -177,12 +184,12 @@ export class Db {
     const now = new Date().toISOString()
     for (const p of SEED_PEOPLE) {
       if (!this.userById(p.id)) {
-        this.createUser({ id: p.id, phone: normalizePhone(p.phone ?? ''), name: p.name, tone: p.tone, createdAt: now, showFaces: true })
+        this.createUser({ id: p.id, phone: normalizePhone(p.phone ?? ''), name: p.name, tone: p.tone, createdAt: now, showFaces: true, follows: [] })
         this.updateUser(p.id, { optOut: !!p.optOut, blocked: !!p.blocked })
       }
     }
     // The seed's guest, "you", becomes a real pilot guest with a login of their own.
-    if (!this.userById('guest')) this.createUser({ id: 'guest', phone: '+12125550100', name: '', tone: 'charcoal', createdAt: now, showFaces: true })
+    if (!this.userById('guest')) this.createUser({ id: 'guest', phone: '+12125550100', name: '', tone: 'charcoal', createdAt: now, showFaces: true, follows: ['maya', 'ben', 'priya', 'lena'] })
     const swap = (id: string) => (id === 'you' ? 'guest' : id)
     const world: World = {
       version: 2,
@@ -221,6 +228,16 @@ function toUser(row: Record<string, unknown>): User {
     tone: row.tone as Person['tone'],
     createdAt: row.created_at as string,
     showFaces: !!row.show_faces,
+    follows: safeList(row.follows),
+  }
+}
+
+function safeList(v: unknown): string[] {
+  try {
+    const parsed = JSON.parse(typeof v === 'string' ? v : '[]') as unknown
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
   }
 }
 

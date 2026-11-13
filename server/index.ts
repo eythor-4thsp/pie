@@ -3,6 +3,8 @@ import { randomBytes, randomInt } from 'node:crypto'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
 import { allowed, reduce, uid, type Action } from '../src/core/reducer'
+import { dueReminders, redactPlan } from '../src/core/select'
+import { when } from '../src/core/format'
 import { Db, normalizePhone, type User, type World } from './db'
 import { ConsoleSms, makeSms } from './sms'
 import { deref, fromClientId, personalize } from './personalize'
@@ -67,7 +69,7 @@ function sessionCookie(token: string, clear = false): string {
 /** Apply one action to the world: expire first, enforce permissions, persist, then deliver texts. */
 function apply(action: Action, user: User | null): { ok: true } | { ok: false; status: number; error: string } {
   const now = new Date().toISOString()
-  const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true } }
+  const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true, followIds: [] as string[] } }
   const actor = user?.id ?? null
   const act = { ...action, ...('at' in action ? { at: now } : {}) } as Action
   if (!actor) return { ok: false, status: 401, error: 'sign in first' }
@@ -102,7 +104,7 @@ async function deliverPending(): Promise<void> {
   const results: Array<{ textId: string; status: 'sent' | 'failed' }> = []
   for (const t of pending) {
     const to = db.userById(t.toId)
-    const link = `${PUBLIC_URL}/#/p/${t.planId ?? ''}`
+    const link = t.planId ? `${PUBLIC_URL}/p/${t.planId}` : PUBLIC_URL
     const body = t.body.replace('{link}', link)
     if (!to?.phone) {
       results.push({ textId: t.id, status: 'failed' })
@@ -111,11 +113,59 @@ async function deliverPending(): Promise<void> {
     const r = await sms.send(to.phone, body)
     results.push({ textId: t.id, status: r.status })
   }
-  const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true } }
+  const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true, followIds: [] as string[] } }
   const next = reduce(base, { type: 'delivered', results })
   const { you: _you, ...rest } = next
   world = rest
   db.saveWorld(world)
+}
+
+/* ---------- clocks: expiry and reminders ---------- */
+
+function base() {
+  return { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true, followIds: [] as string[] } }
+}
+
+function tick(): void {
+  const now = new Date().toISOString()
+  let next = reduce(base(), { type: 'expire', at: now })
+  for (const r of dueReminders(next, now)) next = reduce(next, { type: 'remind', planId: r.planId, which: r.which, at: now })
+  if (next !== base()) {
+    const changed = next.plans !== world.plans || next.rsvps !== world.rsvps || next.texts !== world.texts
+    if (changed) commit(next, null, { type: 'tick', at: now })
+  }
+}
+setInterval(tick, 60000).unref()
+
+/* ---------- shared-link preview ---------- */
+
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
+}
+
+/** A text's link lands here: a public preview any messaging app can unfurl, then straight into the app. */
+function servePreview(res: ServerResponse, planId: string): void {
+  const plan = world.plans[planId]
+  const target = `/#/p/${encodeURIComponent(planId)}`
+  if (!plan || plan.status === 'draft') {
+    res.writeHead(302, { Location: target })
+    return void res.end()
+  }
+  const pub = redactPlan(plan)
+  const host = world.people[plan.hostId]?.name ?? 'someone'
+  const title = plan.status === 'canceled' ? `${plan.title} (canceled)` : plan.title
+  const desc = `${host} is hosting · ${when(plan.startsAt)} · ${plan.neighborhood}`
+  const image = pub.cover.kind === 'photo' && pub.cover.src && !pub.cover.src.startsWith('data:') ? `${PUBLIC_URL}/${pub.cover.src}` : `${PUBLIC_URL}/icon-512.png`
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)} · pie</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
+<meta property="og:image" content="${esc(image)}"><meta property="og:type" content="website"><meta property="og:site_name" content="pie">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0;url=${target}">
+<style>body{margin:0;background:#09090B;color:#FFF8E7;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}a{color:#D0F08B}</style>
+</head><body><p>${esc(title)} · <a href="${target}">open in pie</a></p><script>location.replace(${JSON.stringify(target)})</script></body></html>`
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
+  res.end(html)
 }
 
 /* ---------- static files ---------- */
@@ -154,7 +204,11 @@ const codeAttempts = new Map<string, number[]>()
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', PUBLIC_URL)
   const path = url.pathname
-  if (!path.startsWith('/api/')) return serveStatic(req, res, path)
+  if (!path.startsWith('/api/')) {
+    const preview = /^\/p\/([\w-]+)\/?$/.exec(path)
+    if (preview && req.method === 'GET') return servePreview(res, preview[1])
+    return serveStatic(req, res, path)
+  }
   const user = currentUser(req)
   const now = new Date().toISOString()
 
@@ -162,7 +216,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return json(res, 200, { mode: 'remote', user: user ? { id: user.id, name: user.name, phone: user.phone } : null, sms: sms.name })
   }
   if (req.method === 'GET' && path === '/api/state') {
-    const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true } }
+    const base = { ...world, you: { id: 'you' as const, name: '', phone: '', role: 'guest' as const, showFaces: true, followIds: [] as string[] } }
     const expired = reduce(base, { type: 'expire', at: now })
     if (expired !== base) commit(expired, null, { type: 'expire', at: now })
     return json(res, 200, personalize(world, user))
@@ -198,7 +252,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!db.checkCode(phone, code, now)) return json(res, 400, { error: "that code didn't match" })
     let u = db.userByPhone(phone)
     if (!u) {
-      u = { id: uid('u'), phone, name: String(body.name ?? '').trim().slice(0, 40), tone: (['lime', 'latte', 'gray', 'charcoal'] as const)[randomInt(0, 4)], createdAt: now, showFaces: true }
+      u = { id: uid('u'), phone, name: String(body.name ?? '').trim().slice(0, 40), tone: (['lime', 'latte', 'gray', 'charcoal'] as const)[randomInt(0, 4)], createdAt: now, showFaces: true, follows: [] }
       db.createUser(u)
       world = { ...world, people: db.people() }
     } else if (body.name && !u.name) {
@@ -227,6 +281,12 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       world = { ...world, people: db.people() }
       return json(res, 200, personalize(world, db.userById(user.id)!))
     }
+    if (action.type === 'follow') {
+      if (action.personId === user.id || !world.people[action.personId]) return json(res, 400, { error: 'nobody to follow' })
+      const follows = action.on ? Array.from(new Set([...user.follows, action.personId])) : user.follows.filter((id) => id !== action.personId)
+      db.updateUser(user.id, { follows })
+      return json(res, 200, personalize(world, db.userById(user.id)!))
+    }
     const r = apply(action, user)
     if (!r.ok) return json(res, r.status, { error: r.error, state: personalize(world, user) })
     return json(res, 200, personalize(world, user))
@@ -238,7 +298,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (phone.length < 8) return json(res, 400, { error: 'that phone number looks short' })
     let invitee = db.userByPhone(phone)
     if (!invitee) {
-      invitee = { id: uid('u'), phone, name, tone: (['lime', 'latte', 'gray', 'charcoal'] as const)[randomInt(0, 4)], createdAt: now, showFaces: true }
+      invitee = { id: uid('u'), phone, name, tone: (['lime', 'latte', 'gray', 'charcoal'] as const)[randomInt(0, 4)], createdAt: now, showFaces: true, follows: [] }
       db.createUser(invitee)
       world = { ...world, people: db.people() }
     }

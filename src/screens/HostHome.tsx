@@ -15,6 +15,8 @@ export function HostHome() {
   const past = mine.filter((p) => p.status !== 'draft' && isPast(p.startsAt)).reverse()
   const name = person(state, me).name
   const owned = past.filter((p) => p.hostId === me)
+  const club = Object.values(state.clubs).find((c) => c.organizerId === me)
+  const pendingRequests = club?.requestIds.length ?? 0
 
   return (
     <div className="screen">
@@ -73,18 +75,40 @@ export function HostHome() {
         )}
       </section>
 
+      <section className="section pad">
+        <SectionTitle>the group</SectionTitle>
+        {club ? (
+          <Link to={`/club/${club.id}`} className="card-link">
+            <div className="card row gap-12">
+              <div className="stack gap-4 grow">
+                <span className="h3">{club.name}</span>
+                <span className="eyebrow">
+                  {plural(club.memberIds.length, 'member')} · {club.cadence}
+                  {pendingRequests > 0 ? ` · ${plural(pendingRequests, 'request')} waiting` : ''}
+                </span>
+              </div>
+              {pendingRequests > 0 ? <span className="chip lime">{pendingRequests}</span> : <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />}
+            </div>
+          </Link>
+        ) : (
+          <Link to="/host/club/new" className="card-link">
+            <div className="card row gap-12">
+              <div className="stack gap-4 grow">
+                <span className="h3">start a club</span>
+                <span className="hint">{owned.length > 0 ? 'you have run one. give the group a place to come back to.' : 'after your first dinner, a club is where the group comes back to.'}</span>
+              </div>
+              <Icon name="plus" size={18} stroke="#D0F08B" />
+            </div>
+          </Link>
+        )}
+      </section>
+
       {past.length > 0 && (
         <section className="section pad">
           <SectionTitle>earlier</SectionTitle>
           <div className="list">
             {past.map((p) => (
-              <PlanRow
-                key={p.id}
-                plan={p}
-                viewerId={me}
-                to={`/host/p/${p.id}`}
-                right={<span className="chip muted">{(p.attendedIds ?? goingIds(state, p.id)).length} came</span>}
-              />
+              <PlanRow key={p.id} plan={p} viewerId={me} to={`/host/p/${p.id}`} right={<span className="chip muted">{(p.attendedIds ?? goingIds(state, p.id)).length} came</span>} />
             ))}
           </div>
           {owned[0] && (

@@ -5,7 +5,7 @@ import { clock } from '../core/format'
 import { useInstall } from '../lib/pwa'
 import { Avatar } from '../components/Avatar'
 import { Icon, PieMark } from '../components/Icon'
-import { SectionTitle, Sheet, TopBar, useToast } from '../components/ui'
+import { SectionTitle, Sheet, Switch, TopBar, useToast } from '../components/ui'
 
 export function You() {
   const { state, dispatch, mode, me: remoteMe, logout } = useStore()
@@ -20,6 +20,7 @@ export function You() {
   const went = Object.values(state.plans).filter((p) => p.attendedIds?.includes(me)).length
   const said = Object.values(state.plans).filter((p) => rsvpsFor(state, p.id).some((r) => r.personId === me && r.status === 'going')).length
   const inbox = state.texts.filter((t) => t.toId === me).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5)
+  const following = state.you.followIds.map((id) => person(state, id)).filter((p) => p.name !== 'someone')
 
   return (
     <div className="screen">
@@ -73,7 +74,31 @@ export function You() {
                 <input id="you-phone" className="input" type="tel" value={state.you.phone} placeholder="optional" onChange={(e) => dispatch({ type: 'you', patch: { phone: e.target.value } })} />
               </div>
             )}
+            <div className="row gap-12" style={{ justifyContent: 'space-between' }}>
+              <div className="stack gap-4">
+                <span className="small strong">familiar faces</span>
+                <span className="hint">see people you follow on discovery cards, and let them see you. off means neither.</span>
+              </div>
+              <Switch on={state.you.showFaces} label="familiar faces" onChange={(v) => dispatch({ type: 'you', patch: { showFaces: v } })} />
+            </div>
           </div>
+        </section>
+      )}
+
+      {!host && (
+        <section className="section pad">
+          <SectionTitle right={<span className="chip muted">{following.length}</span>}>following</SectionTitle>
+          {following.length === 0 ? (
+            <p className="small muted">follow a host from their plan and their public dinners show up under "hosts i follow".</p>
+          ) : (
+            <div className="row gap-8 wrap">
+              {following.map((p) => (
+                <button key={p.id} type="button" className="chip" onClick={() => dispatch({ type: 'follow', personId: p.id, on: false })} title="unfollow">
+                  <Avatar person={p} size={16} /> {p.name} <Icon name="x" size={11} />
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -157,28 +182,21 @@ export function You() {
           </section>
 
           <section className="section pad">
-            <SectionTitle>three other endings</SectionTitle>
+            <SectionTitle>other endings</SectionTitle>
             <div className="list card" style={{ padding: '0 16px' }}>
-              <Link to="/p/noor-birthday" className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
-                <Icon name="lock" size={18} stroke="#A1A1AA" />
-                <span className="grow small">a forwarded private invite</span>
-                <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />
-              </Link>
-              <Link to="/p/rooftop-movie" className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
-                <Icon name="seat" size={18} stroke="#A1A1AA" />
-                <span className="grow small">a full dinner, with a waitlist</span>
-                <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />
-              </Link>
-              <Link to="/p/tuesday-trivia" className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
-                <Icon name="alert" size={18} stroke="#A1A1AA" />
-                <span className="grow small">a canceled plan</span>
-                <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />
-              </Link>
-              <Link to="/p/pasta-club" className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
-                <Icon name="dollar" size={18} stroke="#A1A1AA" />
-                <span className="grow small">a paid dinner with checkout</span>
-                <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />
-              </Link>
+              {[
+                ['/p/noor-birthday', 'lock', 'a forwarded private invite'],
+                ['/p/rooftop-movie', 'seat', 'a full dinner, with a waitlist'],
+                ['/p/tuesday-trivia', 'alert', 'a canceled plan'],
+                ['/p/pasta-club', 'dollar', 'a paid dinner with checkout'],
+                ['/p/october-supper', 'sparkle', 'a dinner that already happened'],
+              ].map(([to, icon, label]) => (
+                <Link key={to} to={to} className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
+                  <Icon name={icon} size={18} stroke="#A1A1AA" />
+                  <span className="grow small">{label}</span>
+                  <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />
+                </Link>
+              ))}
             </div>
           </section>
 

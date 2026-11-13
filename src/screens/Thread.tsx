@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { actorId, canSee, goingIds, isHostOf, messagesFor, person, rsvpOf, uid, useStore } from '../lib/store'
-import { time, when } from '../core/format'
+import { actorId, canSee, goingIds, isHostOf, messagesFor, now, person, rsvpOf, uid, useStore } from '../lib/store'
+import { plural, time, when } from '../core/format'
+import type { Poll } from '../core/types'
 import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
-import { TopBar, useToast } from '../components/ui'
+import { Sheet, TopBar, useToast } from '../components/ui'
 
 export function Thread() {
   const { id = '' } = useParams()
@@ -13,6 +14,7 @@ export function Thread() {
   const plan = state.plans[id]
   const me = actorId(state)
   const [text, setText] = useState('')
+  const [asking, setAsking] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const msgs = plan ? messagesFor(state, plan.id) : []
 
@@ -35,23 +37,35 @@ export function Thread() {
 
   const host = person(state, plan.hostId)
   const isHost = isHostOf(plan, me)
+  const open = plan.polls.filter((p) => !p.closed)
+  const closed = plan.polls.filter((p) => p.closed)
 
   const send = () => {
     const t = text.trim()
     if (!t) return
-    void dispatch({ type: 'message', message: { id: uid('m'), planId: plan.id, fromId: me, text: t, at: new Date().toISOString() } })
+    void dispatch({ type: 'message', message: { id: uid('m'), planId: plan.id, fromId: me, text: t, at: now() } })
     setText('')
   }
 
   const pin = (t: string) => {
     const recipients = goingIds(state, plan.id).filter((pid) => pid !== plan.hostId)
-    void dispatch({ type: 'pin', planId: plan.id, text: t, at: new Date().toISOString() })
+    void dispatch({ type: 'pin', planId: plan.id, text: t, at: now() })
     toast(`pinned. texting ${recipients.length} guests`, 'pin')
   }
 
   return (
     <div className="screen no-tabs" style={{ paddingBottom: 120 }}>
-      <TopBar back={`/p/${plan.id}`} title={plan.title} />
+      <TopBar
+        back={`/p/${plan.id}`}
+        title={plan.title}
+        right={
+          isHost ? (
+            <button type="button" className="icon-btn" aria-label="ask the group" onClick={() => setAsking(true)}>
+              <Icon name="filter" />
+            </button>
+          ) : undefined
+        }
+      />
       <div className="pad eyebrow center" style={{ marginTop: -6 }}>
         {when(plan.startsAt)} · {plan.venue}
       </div>
@@ -66,6 +80,14 @@ export function Thread() {
           </p>
         </div>
       </div>
+
+      {(open.length > 0 || closed.length > 0) && (
+        <div className="pad mt-16 stack gap-10">
+          {[...open, ...closed].map((poll) => (
+            <PollCard key={poll.id} poll={poll} me={me} isHost={isHost} onVote={(optionId) => dispatch({ type: 'vote', planId: plan.id, pollId: poll.id, personId: me, optionId })} onClose={() => dispatch({ type: 'closePoll', planId: plan.id, pollId: poll.id })} />
+          ))}
+        </div>
+      )}
 
       <div className="pad stack gap-12 mt-24">
         {msgs.map((m, i) => {
@@ -124,6 +146,109 @@ export function Thread() {
           </button>
         </div>
       </div>
+
+      <Sheet open={asking} onClose={() => setAsking(false)} title="ask the group">
+        <PollForm
+          onSave={(question, options) => {
+            void dispatch({ type: 'poll', planId: plan.id, poll: { id: uid('poll'), byId: me, question, options: options.map((t) => ({ id: uid('o'), text: t })), votes: {}, at: now() } })
+            setAsking(false)
+            toast('asked. everyone in the thread can vote', 'check')
+          }}
+        />
+      </Sheet>
     </div>
+  )
+}
+
+function PollCard({ poll, me, isHost, onVote, onClose }: { poll: Poll; me: string; isHost: boolean; onVote: (optionId: string) => void; onClose: () => void }) {
+  const total = Object.keys(poll.votes).length
+  const mine = poll.votes[me]
+  return (
+    <div className="card stack gap-10">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <span className="eyebrow">{poll.closed ? 'settled' : 'poll'} · {plural(total, 'vote')}</span>
+        {isHost && !poll.closed && (
+          <button type="button" className="text-btn" onClick={onClose}>
+            settle it
+          </button>
+        )}
+      </div>
+      <span className="h3">{poll.question}</span>
+      <div className="stack gap-6">
+        {poll.options.map((o) => {
+          const n = Object.values(poll.votes).filter((v) => v === o.id).length
+          const pct = total ? Math.round((n / total) * 100) : 0
+          const chosen = mine === o.id
+          const winner = poll.closed && n > 0 && n === Math.max(...poll.options.map((x) => Object.values(poll.votes).filter((v) => v === x.id).length))
+          return (
+            <button
+              key={o.id}
+              type="button"
+              disabled={!!poll.closed}
+              onClick={() => onVote(o.id)}
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                textAlign: 'left',
+                height: 40,
+                borderRadius: 10,
+                border: `1px solid ${chosen || winner ? 'var(--lime)' : 'var(--hair)'}`,
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: poll.closed ? 'default' : 'pointer',
+              }}
+            >
+              <span style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: chosen || winner ? 'var(--lime-dim)' : 'rgba(255,255,255,0.05)', transition: 'width .3s var(--ease)' }} aria-hidden="true" />
+              <span className="small" style={{ position: 'relative', fontWeight: chosen ? 600 : 500 }}>
+                {chosen && <Icon name="check" size={12} strokeWidth={3} stroke="#D0F08B" />} {o.text}
+              </span>
+              <span className="eyebrow" style={{ position: 'relative' }}>
+                {n}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PollForm({ onSave }: { onSave: (question: string, options: string[]) => void }) {
+  const [q, setQ] = useState('')
+  const [opts, setOpts] = useState(['', ''])
+  const clean = opts.map((o) => o.trim()).filter(Boolean)
+  const ok = q.trim().length > 0 && clean.length >= 2
+  return (
+    <form
+      className="stack gap-12"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (ok) onSave(q.trim(), clean)
+      }}
+    >
+      <p className="small muted">For the things the group would otherwise settle over outside texts: where after, which night, whose place.</p>
+      <div className="field">
+        <label htmlFor="pq">the question</label>
+        <input id="pq" className="input" value={q} placeholder="after dinner?" autoFocus onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="stack gap-8">
+        <span className="eyebrow">options</span>
+        {opts.map((o, i) => (
+          <input key={i} className="input" value={o} placeholder={`option ${i + 1}`} aria-label={`option ${i + 1}`} onChange={(e) => setOpts(opts.map((x, j) => (j === i ? e.target.value : x)))} />
+        ))}
+        {opts.length < 4 && (
+          <button type="button" className="text-btn lime" style={{ alignSelf: 'flex-start' }} onClick={() => setOpts([...opts, ''])}>
+            one more option
+          </button>
+        )}
+      </div>
+      <button type="submit" className="btn btn-primary" disabled={!ok}>
+        ask
+      </button>
+    </form>
   )
 }

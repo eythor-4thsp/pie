@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildSeed } from '../src/core/seed'
 import { allowed, reduce, type Action } from '../src/core/reducer'
-import { goingIds, reviewAudience, rsvpOf, seatsLeft } from '../src/core/select'
+import { dueReminders, goingIds, reviewAudience, rsvpOf, seatsLeft } from '../src/core/select'
 import type { Plan, State } from '../src/core/types'
 
 const T0 = '2026-11-13T18:00:00.000Z'
@@ -141,4 +141,54 @@ test('permissions: guests cannot touch a host action, hosts cannot answer for a 
   const cohost: Action = { type: 'cohost', planId: 'pasta-club', personId: 'theo', add: true }
   assert.equal(allowed(state, 'omar', cohost), false, 'a helper cannot add helpers')
   assert.equal(allowed(state, 'omar', { type: 'pin', planId: 'pasta-club', text: 'x', at: T0 }), true, 'a helper can pin')
+})
+
+test('a nudge goes out once a day, and only to someone who has not answered', () => {
+  let state = buildSeed()
+  const plan = state.plans['friday-dumplings']
+  // "you" is invited and has not answered
+  state = reduce(state, { type: 'nudge', planId: plan.id, personId: 'you', at: T0 })
+  assert.equal(state.texts.filter((t) => t.kind === 'nudge' && t.toId === 'you').length, 1)
+  const again = reduce(state, { type: 'nudge', planId: plan.id, personId: 'you', at: later(60) })
+  assert.equal(again, state, 'no second nudge within a day')
+  const tomorrow = reduce(state, { type: 'nudge', planId: plan.id, personId: 'you', at: later(25 * 60) })
+  assert.equal(tomorrow.texts.filter((t) => t.kind === 'nudge' && t.toId === 'you').length, 2)
+  const answered = reduce(state, { type: 'nudge', planId: plan.id, personId: 'ben', at: later(25 * 60) })
+  assert.equal(answered, state, 'Ben already said yes')
+})
+
+test('removing a guest revokes the invitation and frees the seat', () => {
+  let { state } = smallDinner(buildSeed(), 2)
+  state = reduce(state, { type: 'rsvp', planId: 'tiny', personId: 'ben', status: 'going', at: later(1) })
+  state = reduce(state, { type: 'rsvp', planId: 'tiny', personId: 'priya', status: 'waitlist', at: later(2) })
+  state = reduce(state, { type: 'uninvite', planId: 'tiny', personId: 'ben', at: later(3) })
+  assert.ok(!state.plans['tiny'].invitedIds.includes('ben'))
+  assert.equal(rsvpOf(state, 'tiny', 'ben')?.status, 'declined')
+  assert.equal(rsvpOf(state, 'tiny', 'priya')?.status, 'offered', 'the seat moved on')
+})
+
+test('reminders go out the day before and two hours before, once each', () => {
+  let state = buildSeed()
+  const plan = state.plans['friday-dumplings']
+  const start = new Date(plan.startsAt).getTime()
+  const dayBefore = new Date(start - 23 * 3600000).toISOString()
+  const due = dueReminders(state, dayBefore).filter((d) => d.planId === plan.id)
+  assert.deepEqual(due, [{ planId: plan.id, which: 'day' }])
+  state = reduce(state, { type: 'remind', planId: plan.id, which: 'day', at: dayBefore })
+  assert.equal(state.texts.filter((t) => t.kind === 'reminder' && t.planId === plan.id).length, goingIds(state, plan.id).length - 1)
+  assert.deepEqual(dueReminders(state, dayBefore).filter((d) => d.planId === plan.id), [])
+  const soon = new Date(start - 1.5 * 3600000).toISOString()
+  assert.deepEqual(dueReminders(state, soon).filter((d) => d.planId === plan.id), [{ planId: plan.id, which: 'soon' }])
+})
+
+test('polls: people who are in can vote once, the host settles it', () => {
+  let state = buildSeed()
+  const poll = state.plans['friday-dumplings'].polls[0]
+  assert.equal(allowed(state, 'ben', { type: 'vote', planId: 'friday-dumplings', pollId: poll.id, personId: 'ben', optionId: 'o2' }), true)
+  assert.equal(allowed(state, 'noor', { type: 'vote', planId: 'friday-dumplings', pollId: poll.id, personId: 'noor', optionId: 'o2' }), false, 'Noor passed')
+  state = reduce(state, { type: 'vote', planId: 'friday-dumplings', pollId: poll.id, personId: 'ben', optionId: 'o2' })
+  assert.equal(state.plans['friday-dumplings'].polls[0].votes['ben'], 'o2', 'a re-vote replaces the first')
+  state = reduce(state, { type: 'closePoll', planId: 'friday-dumplings', pollId: poll.id })
+  const after = reduce(state, { type: 'vote', planId: 'friday-dumplings', pollId: poll.id, personId: 'ben', optionId: 'o1' })
+  assert.equal(after.plans['friday-dumplings'].polls[0].votes['ben'], 'o2', 'no votes after it is settled')
 })

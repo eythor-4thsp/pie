@@ -31,7 +31,7 @@ function remapPlan(plan: Plan, userId: string | null): Plan {
 export function personalize(world: World, user: User | null): State {
   const userId = user?.id ?? null
   const m = (id: string) => toClientId(id, userId)
-  const base: State = { ...world, you: { id: 'you', name: '', phone: '', role: 'guest', showFaces: true } }
+  const base: State = { ...world, you: { id: 'you', name: '', phone: '', role: 'guest', showFaces: true, followIds: [] } }
   const plans: State['plans'] = {}
   const visible = new Set<string>()
   const hosting = new Set<string>()
@@ -73,7 +73,7 @@ export function personalize(world: World, user: User | null): State {
   }
   return {
     version: 2,
-    you: { id: 'you', name: user?.name ?? '', phone: user?.phone ?? '', role: 'guest', showFaces: user?.showFaces ?? true },
+    you: { id: 'you', name: user?.name ?? '', phone: user?.phone ?? '', role: 'guest', showFaces: user?.showFaces ?? true, followIds: user?.follows ?? [] },
     people,
     clubs,
     plans,

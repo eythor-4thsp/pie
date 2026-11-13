@@ -155,6 +155,10 @@ export function Composer({ mode }: { mode: Mode }) {
       viewerIds: existing?.viewerIds ?? [],
       attendedIds: existing?.attendedIds,
       debrief: existing?.debrief,
+      polls: existing?.polls ?? [],
+      photos: existing?.photos ?? [],
+      remindersSent: existing?.remindersSent ?? [],
+      nudgedAt: existing?.nudgedAt ?? {},
       repeatOf: mode === 'again' ? source?.id : existing?.repeatOf,
     }
   }
@@ -429,6 +433,20 @@ export function Composer({ mode }: { mode: Mode }) {
           )}
           {tried && !publishable && <span className="hint error center">fill in the bits marked above and this goes live.</span>}
           {mode === 'edit' && source?.status === 'published' && <span className="hint center">guests who said yes get one text with what changed. pending invites see the new details when they open the link.</span>}
+          {mode === 'edit' && source?.status === 'draft' && (
+            <button
+              type="button"
+              className="text-btn danger"
+              style={{ alignSelf: 'center', marginTop: 8 }}
+              onClick={async () => {
+                await dispatch({ type: 'deletePlan', planId: source.id })
+                toast('draft deleted')
+                nav('/host', { replace: true })
+              }}
+            >
+              delete this draft
+            </button>
+          )}
         </div>
       </div>
     </div>

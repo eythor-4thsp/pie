@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { actorId, canSee, goingIds, isHostOf, messagesFor, now, person, rsvpOf, seatsLeft, ticketOf, useStore, waitlistIds } from '../lib/store'
-import { icsStamp, longWhen, money, namesLine, plural, relative, time, when, clock } from '../core/format'
+import { actorId, canSee, goingIds, isHostOf, messagesFor, now, person, rsvpOf, seatsLeft, ticketOf, uid, useStore, waitlistIds } from '../lib/store'
+import { icsStamp, isPast, longWhen, money, namesLine, plural, relative, time, when, clock } from '../core/format'
 import type { Plan as PlanT } from '../core/types'
 import { download, share } from '../lib/pwa'
 import { Cover } from '../components/Cover'
@@ -89,7 +89,10 @@ export function Plan() {
   const changes = plan.updates.filter((u) => u.kind !== 'published')
   const paid = plan.payment === 'checkout' && plan.cost > 0
   const queue = waitlistIds(state, plan.id)
-  const shareUrl = `${location.origin}${location.pathname}#/p/${plan.id}`
+  const shareUrl = mode === 'remote' ? `${location.origin}/p/${plan.id}` : `${location.origin}${location.pathname}#/p/${plan.id}`
+  const following = state.you.followIds.includes(plan.hostId)
+  const past = isPast(plan.startsAt)
+  const canPhoto = past && (youGoing || isHost || !!plan.attendedIds?.includes(viewer))
 
   const doShare = async () => {
     const r = await share({ title: plan.title, text: `${host.name} is hosting ${plan.title}, ${when(plan.startsAt)}`, url: shareUrl })
@@ -273,11 +276,18 @@ export function Plan() {
               {plan.cohostIds.length > 0 && ` with ${plan.cohostIds.map((c) => person(state, c).name).join(', ')}`}
             </span>
           </div>
-          {club && (
-            <Link to={`/club/${club.id}`} className="chip">
-              <Icon name="users" size={12} /> {club.name}
-            </Link>
-          )}
+          <span className="row gap-6">
+            {!isHost && identified && !previewing && (
+              <button type="button" className={`chip ${following ? 'lime' : 'outline-lime'}`} onClick={() => dispatch({ type: 'follow', personId: plan.hostId, on: !following })}>
+                {following ? 'following' : `follow ${host.name}`}
+              </button>
+            )}
+            {club && (
+              <Link to={`/club/${club.id}`} className="chip">
+                <Icon name="users" size={12} /> club
+              </Link>
+            )}
+          </span>
         </div>
         <div className="row gap-12">
           <Faces people={facePeople} popFirst={youGoing && burst} />
@@ -411,6 +421,58 @@ export function Plan() {
         )}
       </div>
 
+      {/* ---------- photos, after the fact ---------- */}
+      {past && plan.status === 'published' && (youGoing || isHost || plan.photos.length > 0) && (
+        <section className="section pad">
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
+            <span className="eyebrow">how it went · {plural(plan.photos.length, 'photo')}</span>
+            {canPhoto && (
+              <label className="text-btn lime" style={{ cursor: 'pointer' }}>
+                add a photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    try {
+                      const src = await shrinkPhoto(f)
+                      await dispatch({ type: 'photo', planId: plan.id, photo: { id: uid('ph'), byId: viewer, src, at: now() } })
+                      toast('added', 'check')
+                    } catch (err) {
+                      toast((err as Error).message || "couldn't read that photo")
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          {plan.photos.length === 0 ? (
+            <p className="small muted">no photos yet. the first one usually starts it.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+              {plan.photos.map((ph) => (
+                <div key={ph.id} style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+                  <img src={ph.src} alt={`by ${person(state, ph.byId).name}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                  {(ph.byId === viewer || isHost) && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label="remove photo"
+                      style={{ position: 'absolute', top: 4, right: 4, width: 28, height: 28, background: 'rgba(9,9,11,0.7)' }}
+                      onClick={() => dispatch({ type: 'removePhoto', planId: plan.id, photoId: ph.id, personId: viewer })}
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ---------- what changed ---------- */}
       {changes.length > 0 && (
         <section className="section pad">
@@ -514,6 +576,27 @@ export function Plan() {
       {!isHost && <span className="sr-only">{youGoing ? 'You are going.' : 'You have not responded.'}</span>}
     </div>
   )
+}
+
+async function shrinkPhoto(file: File): Promise<string> {
+  const url = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image()
+      i.onload = () => res(i)
+      i.onerror = rej
+      i.src = url
+    })
+    const w = Math.min(800, img.width)
+    const h = Math.round((img.height / img.width) * w)
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    c.getContext('2d')?.drawImage(img, 0, 0, w, h)
+    return c.toDataURL('image/jpeg', 0.75)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 export function PinnedNote({ plan, hostName, onCalendar, className = '' }: { plan: PlanT; hostName: string; onCalendar?: () => void; className?: string }) {

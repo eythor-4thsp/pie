@@ -1,4 +1,4 @@
-import type { Audience, Club, Person, Plan, Rsvp, State, Text } from './types'
+import type { Audience, Club, Person, Plan, ReminderKind, Rsvp, State, Text } from './types'
 
 export function personName(state: State, id: string): string {
   if (id === 'you') return state.you.name || 'you'
@@ -150,7 +150,37 @@ export function redactPlan(plan: Plan): Plan {
     attendedIds: undefined,
     updates: [],
     debrief: undefined,
+    polls: [],
+    photos: [],
+    nudgedAt: {},
     cover: plan.cover.kind === 'photo' ? plan.cover : { kind: 'poster', tone: 'charcoal' },
     restricted: true,
   }
+}
+
+/** Reminder texts that are due: the day before and two hours before, each once. */
+export function dueReminders(state: State, now: string): Array<{ planId: string; which: ReminderKind }> {
+  const t = new Date(now).getTime()
+  const out: Array<{ planId: string; which: ReminderKind }> = []
+  for (const p of Object.values(state.plans)) {
+    if (p.status !== 'published') continue
+    const start = new Date(p.startsAt).getTime()
+    const hours = (start - t) / 3600000
+    if (hours <= 0) continue
+    if (hours <= 24 && !p.remindersSent.includes('day')) out.push({ planId: p.id, which: 'day' })
+    if (hours <= 2 && !p.remindersSent.includes('soon')) out.push({ planId: p.id, which: 'soon' })
+  }
+  return out
+}
+
+/** People going whom the viewer follows and who allow being shown. Both sides must permit it. */
+export function familiarFaces(state: State, planId: string, viewerId: string): string[] {
+  if (!state.you.showFaces) return []
+  const follows = new Set(state.you.followIds)
+  return goingIds(state, planId).filter((id) => id !== viewerId && follows.has(id) && !state.people[id]?.hideFace)
+}
+
+export function canNudge(plan: Plan, personId: string, now: string): boolean {
+  const last = plan.nudgedAt[personId]
+  return !last || new Date(now).getTime() - new Date(last).getTime() > 24 * 3600000
 }

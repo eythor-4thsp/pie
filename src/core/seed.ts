@@ -44,6 +44,10 @@ const base = (over: Partial<Plan> & Pick<Plan, 'id' | 'hostId' | 'title' | 'star
   cohostIds: [],
   viewerIds: [],
   updates: [],
+  polls: [],
+  photos: [],
+  remindersSent: [],
+  nudgedAt: {},
   createdAt: over.startsAt,
   ...over,
 })
@@ -101,6 +105,20 @@ export function buildSeed(now = new Date()): State {
       cover: { kind: 'photo', src: 'hero-dumplings.jpg' },
       description: "Pork and chive, the crispy bottoms, the cucumber salad. We'll order for the table and split it.",
       updates: [{ id: 'u1', at: iso(threeDaysAgo), kind: 'published', text: 'Maya published the plan and invited 7 people.', recipients: [] }],
+      polls: [
+        {
+          id: 'poll1',
+          byId: 'maya',
+          question: 'after dinner?',
+          options: [
+            { id: 'o1', text: 'drinks at Dante' },
+            { id: 'o2', text: 'walk to the river' },
+            { id: 'o3', text: 'home, it is friday' },
+          ],
+          votes: { ben: 'o1', priya: 'o2', sam: 'o1', lena: 'o1' },
+          at: iso(ago(now, 1, 20, 0)),
+        },
+      ],
     }),
     base({
       id: 'rooftop-movie',
@@ -233,6 +251,7 @@ export function buildSeed(now = new Date()): State {
       attendedIds: ['maya', 'you', 'ben', 'priya', 'lena', 'jules', 'noor'],
       cover: { kind: 'poster', tone: 'gray' },
       debrief: { at: iso(ago(lastSupper, -1, 10, 0)), minutesToPublish: 12, interventions: 2, outsideTexts: 5, notes: 'Two people asked for the address over text even though it was on the page. Table was ready, nobody got lost.' },
+      remindersSent: ['day', 'soon'],
       updates: [{ id: 'u1', at: iso(ago(lastSupper, 9, 12, 0)), kind: 'published', text: 'Maya published the plan and invited 8 people.', recipients: [] }],
     }),
     base({
@@ -336,7 +355,7 @@ export function buildSeed(now = new Date()): State {
 
   return {
     version: 2,
-    you: { id: 'you', name: '', phone: '', role: 'guest', showFaces: true },
+    you: { id: 'you', name: '', phone: '', role: 'guest', showFaces: true, followIds: ['maya', 'ben', 'priya', 'lena'] },
     people: Object.fromEntries(SEED_PEOPLE.map((p) => [p.id, p])),
     clubs: Object.fromEntries(clubs.map((c) => [c.id, c])),
     plans: Object.fromEntries(plans.map((p) => [p.id, p])),

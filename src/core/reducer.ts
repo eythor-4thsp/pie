@@ -1,6 +1,6 @@
-import { goingIds, isHostOf, person, rsvpsFor, seatsLeft, waitlistIds } from './select'
+import { canNudge, goingIds, isHostOf, person, rsvpOf, rsvpsFor, seatsLeft, waitlistIds } from './select'
 import { when } from './format'
-import type { Club, Debrief, Message, Person, Plan, PlanUpdate, Post, Report, Role, Rsvp, State, Text, TextKind, UpdateKind } from './types'
+import type { Club, Debrief, Message, Person, Photo, Plan, PlanUpdate, Poll, Post, ReminderKind, Report, Role, Rsvp, State, Text, TextKind, UpdateKind } from './types'
 
 export function uid(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`
@@ -41,6 +41,18 @@ export type Action =
   | { type: 'report'; clubId: string; report: Report }
   | { type: 'block'; personId: string; blocked: boolean }
   | { type: 'reconcile'; planId: string; attendedIds: string[] }
+  | { type: 'uninvite'; planId: string; personId: string; at: string }
+  | { type: 'nudge'; planId: string; personId: string; at: string }
+  | { type: 'remind'; planId: string; which: ReminderKind; at: string }
+  | { type: 'poll'; planId: string; poll: Poll }
+  | { type: 'vote'; planId: string; pollId: string; personId: string; optionId: string }
+  | { type: 'closePoll'; planId: string; pollId: string }
+  | { type: 'photo'; planId: string; photo: Photo }
+  | { type: 'removePhoto'; planId: string; photoId: string; personId: string }
+  | { type: 'follow'; personId: string; on: boolean }
+  | { type: 'createClub'; club: Club }
+  | { type: 'updateClub'; clubId: string; patch: Partial<Pick<Club, 'name' | 'cadence' | 'description' | 'neighborhood'>> }
+  | { type: 'deletePlan'; planId: string }
 
 function plus(iso: string, minutes: number): string {
   return new Date(new Date(iso).getTime() + minutes * 60000).toISOString()
@@ -78,6 +90,10 @@ function body(kind: TextKind, state: State, plan: Plan, extra = ''): string {
       return `A seat opened up for ${plan.title}, ${when(plan.startsAt)}. It's yours for ${OFFER_MINUTES / 60} hours: {link}`
     case 'receipt':
       return `You're in for ${plan.title}. ${extra} {link}`
+    case 'reminder':
+      return `${extra} ${plan.title}, ${when(plan.startsAt)} at ${plan.venue}. ${plan.hostNote ? `${plan.hostNote} ` : ''}{link}`
+    case 'nudge':
+      return `${host} is still hoping you'll come to ${plan.title}, ${when(plan.startsAt)}. Yes or no, either helps: {link}`
     default:
       return `${plan.title}: ${extra} {link}`
   }
@@ -372,6 +388,80 @@ export function reduce(state: State, action: Action): State {
       if (!plan) return state
       return setPlan(state, { ...plan, attendedIds: action.attendedIds })
     }
+    case 'uninvite': {
+      const plan = state.plans[action.planId]
+      if (!plan || action.personId === plan.hostId) return state
+      let s = setPlan(state, { ...plan, invitedIds: plan.invitedIds.filter((id) => id !== action.personId), cohostIds: plan.cohostIds.filter((id) => id !== action.personId) })
+      const r = rsvpOf(s, plan.id, action.personId)
+      if (r && r.status !== 'declined') {
+        s = setRsvp(s, { ...r, status: 'declined', at: action.at, expiresAt: undefined })
+        if (r.status === 'going' || r.status === 'offered' || r.status === 'holding') s = promoteWaitlist(s, plan.id, action.at)
+      }
+      return s
+    }
+    case 'nudge': {
+      const plan = state.plans[action.planId]
+      if (!plan || plan.status !== 'published' || !canNudge(plan, action.personId, action.at)) return state
+      if (!plan.invitedIds.includes(action.personId) || rsvpOf(state, plan.id, action.personId)) return state
+      let s = setPlan(state, { ...plan, nudgedAt: { ...plan.nudgedAt, [action.personId]: action.at } })
+      s = addTexts(s, [makeText('nudge', action.personId, plan.id, body('nudge', s, plan), action.at)])
+      return s
+    }
+    case 'remind': {
+      const plan = state.plans[action.planId]
+      if (!plan || plan.status !== 'published' || plan.remindersSent.includes(action.which)) return state
+      const going = goingIds(state, plan.id).filter((id) => id !== plan.hostId)
+      const lead = action.which === 'day' ? 'Tomorrow:' : 'In about two hours:'
+      let s = setPlan(state, { ...plan, remindersSent: [...plan.remindersSent, action.which] })
+      s = addTexts(s, going.map((id) => makeText('reminder', id, plan.id, body('reminder', s, plan, lead), action.at)))
+      return s
+    }
+    case 'poll': {
+      const plan = state.plans[action.planId]
+      if (!plan || plan.polls.some((p) => p.id === action.poll.id)) return state
+      return setPlan(state, { ...plan, polls: [...plan.polls, action.poll] })
+    }
+    case 'vote': {
+      const plan = state.plans[action.planId]
+      if (!plan) return state
+      const polls = plan.polls.map((p) => (p.id !== action.pollId || p.closed || !p.options.some((o) => o.id === action.optionId) ? p : { ...p, votes: { ...p.votes, [action.personId]: action.optionId } }))
+      return setPlan(state, { ...plan, polls })
+    }
+    case 'closePoll': {
+      const plan = state.plans[action.planId]
+      if (!plan) return state
+      return setPlan(state, { ...plan, polls: plan.polls.map((p) => (p.id === action.pollId ? { ...p, closed: true } : p)) })
+    }
+    case 'photo': {
+      const plan = state.plans[action.planId]
+      if (!plan || plan.photos.some((p) => p.id === action.photo.id)) return state
+      return setPlan(state, { ...plan, photos: [...plan.photos, action.photo] })
+    }
+    case 'removePhoto': {
+      const plan = state.plans[action.planId]
+      if (!plan) return state
+      return setPlan(state, { ...plan, photos: plan.photos.filter((p) => p.id !== action.photoId) })
+    }
+    case 'follow': {
+      const ids = action.on ? Array.from(new Set([...state.you.followIds, action.personId])) : state.you.followIds.filter((id) => id !== action.personId)
+      return { ...state, you: { ...state.you, followIds: ids } }
+    }
+    case 'createClub': {
+      if (state.clubs[action.club.id]) return state
+      return setClub(state, action.club)
+    }
+    case 'updateClub': {
+      const club = state.clubs[action.clubId]
+      if (!club) return state
+      return setClub(state, { ...club, ...action.patch })
+    }
+    case 'deletePlan': {
+      const plan = state.plans[action.planId]
+      if (!plan || plan.status !== 'draft') return state
+      const plans = { ...state.plans }
+      delete plans[plan.id]
+      return { ...state, plans }
+    }
     default:
       return state
   }
@@ -392,6 +482,33 @@ export function allowed(state: State, actorId: string, action: Action): boolean 
     case 'expire':
     case 'delivered':
       return true
+    case 'follow':
+      return actorId !== action.personId
+    case 'createClub':
+      return action.club.organizerId === actorId
+    case 'updateClub':
+      return state.clubs[action.clubId]?.organizerId === actorId
+    case 'deletePlan':
+      return !!plan && plan.hostId === actorId
+    case 'uninvite':
+    case 'nudge':
+    case 'remind':
+    case 'poll':
+    case 'closePoll':
+      return host
+    case 'vote': {
+      if (!plan || !self) return false
+      return host || rsvpOf(state, plan.id, actorId)?.status === 'going'
+    }
+    case 'photo': {
+      if (!plan || action.photo.byId !== actorId) return false
+      return host || rsvpOf(state, plan.id, actorId)?.status === 'going' || !!plan.attendedIds?.includes(actorId)
+    }
+    case 'removePhoto': {
+      if (!plan) return false
+      const ph = plan.photos.find((x) => x.id === action.photoId)
+      return host || (!!ph && ph.byId === actorId && self)
+    }
     case 'addPerson':
       return true
     case 'rsvp':
