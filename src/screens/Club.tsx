@@ -103,7 +103,7 @@ export function Club() {
             </div>
             {club.requestIds.length > 0 && (
               <div className="stack gap-8">
-                <span className="eyebrow">{plural(club.requestIds.length, 'person', 'people')} asked to join</span>
+                <span className="eyebrow">requests</span>
                 {club.requestIds.map((pid) => {
                   const p = person(state, pid)
                   return (
@@ -111,7 +111,7 @@ export function Club() {
                       <Avatar person={p} size={28} />
                       <span className="grow small strong">{p.name}</span>
                       <button type="button" className="btn btn-primary btn-sm btn-auto" onClick={() => dispatch({ type: 'joinClub', clubId: club.id, personId: pid })}>
-                        let them in
+                        approve
                       </button>
                     </div>
                   )
@@ -120,7 +120,7 @@ export function Club() {
             )}
             {club.reports.length > 0 && (
               <div className="stack gap-6">
-                <span className="eyebrow cherry">{plural(club.reports.length, 'report')} to review</span>
+                <span className="eyebrow cherry">reports</span>
                 {club.reports.map((r) => (
                   <div key={r.id} className="row gap-8" style={{ justifyContent: 'space-between' }}>
                     <span className="small">
@@ -136,8 +136,7 @@ export function Club() {
               </div>
             )}
             <span className="small muted">
-              {club.memberIds.length - club.mutedIds.length} of {club.memberIds.length} members want invitations.{' '}
-              {club.mutedIds.length > 0 && `${club.mutedIds.map((pid) => person(state, pid).name).join(', ')} opted out.`}
+              {club.memberIds.length - club.mutedIds.length} of {club.memberIds.length} take invitations
             </span>
             {past[0] && (
               <button type="button" className="btn btn-primary" onClick={() => nav(`/host/again/${past[0].id}`)}>
@@ -153,35 +152,29 @@ export function Club() {
             </div>
             <div className="row gap-12" style={{ justifyContent: 'space-between' }}>
               <div className="stack gap-4">
-                <span className="small strong">send me the next invitation</span>
-                <span className="hint">{muted ? "you'll see plans here but won't get a text" : `${organizer.name} can include you next time`}</span>
+                <span className="small strong">invitations</span>
               </div>
               <Switch on={!muted} label="receive invitations" onChange={(v) => dispatch({ type: 'muteClub', clubId: club.id, personId: me, muted: !v })} />
             </div>
             <div className="row gap-12" style={{ justifyContent: 'space-between' }}>
               <div className="stack gap-4">
-                <span className="small strong">show me in the member list</span>
-                <span className="hint">{listed ? 'other members can see your name' : 'only the organizer sees you'}</span>
+                <span className="small strong">listed in members</span>
               </div>
               <Switch on={listed} label="listed in the directory" onChange={(v) => dispatch({ type: 'listMe', clubId: club.id, personId: me, listed: v })} />
             </div>
             <button type="button" className="text-btn danger" style={{ alignSelf: 'flex-start' }} onClick={() => setLeaving(true)}>
-              leave the club
+              leave
             </button>
           </div>
         ) : requested ? (
           <div className="card stack gap-8">
             <span className="h3">request sent</span>
-            <span className="small muted">{organizer.name} will see it on the club page. You'll get a text once you're in.</span>
+            <span className="small muted">{organizer.name} will approve you.</span>
           </div>
         ) : (
           <div className="card stack gap-10">
-            <span className="h3">{eligible ? `you've been to one. want in?` : 'closed club'}</span>
-            <span className="small muted">
-              {eligible
-                ? 'Joining means you hear about the next dinner. Coming to one is still a separate yes.'
-                : `${organizer.name} approves new members. Coming to a dinner, joining, and saying yes to the next one are three different things.`}
-            </span>
+            <span className="h3">{eligible ? 'join the club' : 'closed club'}</span>
+            {!eligible && <span className="small muted">{organizer.name} approves new members.</span>}
             <button
               type="button"
               className="btn btn-primary mt-8"
@@ -189,26 +182,26 @@ export function Club() {
                 if (gate()) return
                 if (eligible) {
                   void dispatch({ type: 'joinClub', clubId: club.id, personId: me })
-                  toast("you're in the club", 'check')
+                  toast('joined', 'check')
                 } else {
                   void dispatch({ type: 'requestClub', clubId: club.id, personId: me })
-                  toast(`asked ${organizer.name} to add you`, 'send')
+                  toast('requested', 'send')
                 }
               }}
             >
-              {eligible ? 'join the club' : 'ask to join'}
+              {eligible ? 'join' : 'ask to join'}
             </button>
           </div>
         )}
       </div>
 
       <section className="section pad">
-        <SectionTitle>next gathering</SectionTitle>
+        <SectionTitle>next</SectionTitle>
         {next ? (
           <PlanCard plan={next} viewerId={me} />
         ) : (
           <Empty>
-            nothing scheduled yet.
+            nothing scheduled
             {isOrganizer && (
               <>
                 {' '}
@@ -222,7 +215,7 @@ export function Club() {
       </section>
 
       <section className="section pad">
-        <SectionTitle>from {organizer.name}</SectionTitle>
+        <SectionTitle>notes</SectionTitle>
         {isOrganizer && (
           <form
             className="row gap-8"
@@ -235,14 +228,14 @@ export function Club() {
               setPost('')
             }}
           >
-            <input className="input grow" placeholder="say something to the club" value={post} onChange={(e) => setPost(e.target.value)} aria-label="announcement" />
+            <input className="input grow" placeholder="post to the club" value={post} onChange={(e) => setPost(e.target.value)} aria-label="announcement" />
             <button type="submit" className="icon-btn lime" aria-label="post" disabled={!post.trim()}>
               <Icon name="send" size={18} />
             </button>
           </form>
         )}
         {posts.length === 0 ? (
-          <p className="small muted">nothing posted between dinners yet.</p>
+          <p className="small muted">no posts yet</p>
         ) : (
           <div className="stack gap-10">
             {posts.map((p) => (
@@ -281,14 +274,13 @@ export function Club() {
                 )}
               </div>
             ))}
-            {members.length - directory.length > 0 && <span className="hint mt-8">{plural(members.length - directory.length, 'member')} chose not to be listed.</span>}
-          </div>
+                      </div>
         </section>
       )}
 
       {past.length > 0 && (
         <section className="section pad">
-          <SectionTitle>earlier dinners</SectionTitle>
+          <SectionTitle>earlier</SectionTitle>
           <div className="list">
             {past.map((p) => (
               <PlanRow
@@ -303,8 +295,8 @@ export function Club() {
         </section>
       )}
 
-      <Sheet open={leaving} onClose={() => setLeaving(false)} title="leave the club?">
-        <p className="body muted">You'll stop getting invitations. Any dinner you already said yes to stays on your plans.</p>
+      <Sheet open={leaving} onClose={() => setLeaving(false)} title="leave?">
+        <p className="body muted">you'll stop getting invitations.</p>
         <div className="stack gap-10 mt-16">
           <button
             type="button"
@@ -322,7 +314,7 @@ export function Club() {
         </div>
       </Sheet>
 
-      <Sheet open={editing} onClose={() => setEditing(false)} title="about the club">
+      <Sheet open={editing} onClose={() => setEditing(false)} title="edit">
         <ClubForm
           initial={{ name: club.name, cadence: club.cadence, neighborhood: club.neighborhood, description: club.description }}
           submitLabel="save"
@@ -343,16 +335,15 @@ export function Club() {
             void dispatch({ type: 'report', clubId: club.id, report: { id: uid('rep'), byId: me, aboutId: reporting, reason: reason.trim() || 'no reason given', at: now() } })
             setReporting(null)
             setReason('')
-            toast(`${organizer.name} will look at it`)
+            toast('reported')
           }}
         >
-          <p className="small muted">Only {organizer.name} sees this. They can remove or block someone from the club.</p>
-          <div className="field">
+                    <div className="field">
             <label htmlFor="rp-reason">what happened</label>
             <textarea id="rp-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <button type="submit" className="btn btn-danger">
-            send report
+            report
           </button>
         </form>
       </Sheet>

@@ -183,7 +183,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const message = (e as Error).message
         // A refusal (full, forbidden) is final; a network failure is recoverable.
-        if (/failed to fetch|network|load failed/i.test(message)) setError({ message: "couldn't reach pie. nothing was changed.", action })
+        if (/failed to fetch|network|load failed/i.test(message)) setError({ message: 'offline. not saved.', action })
         throw e
       }
       return

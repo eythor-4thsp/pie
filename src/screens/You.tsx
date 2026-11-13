@@ -31,7 +31,7 @@ export function You() {
           <h1 className="title" style={{ fontSize: 36 }}>
             {host ? 'Maya' : state.you.name || 'you'}
           </h1>
-          <span className="small muted">{host ? 'organizer · West Village Supper Club' : state.you.phone || 'no phone on file'}</span>
+          <span className="small muted">{host ? 'organizer · West Village Supper Club' : state.you.phone}</span>
         </div>
       </div>
 
@@ -48,7 +48,7 @@ export function You() {
 
       {!host && (
         <section className="section pad">
-          <SectionTitle>about you</SectionTitle>
+          <SectionTitle>you</SectionTitle>
           <div className="card stack gap-12">
             <div className="field">
               <label htmlFor="you-name">name</label>
@@ -66,18 +66,17 @@ export function You() {
               <div className="field">
                 <span className="label">phone</span>
                 <span className="small">{state.you.phone || 'not signed in'}</span>
-                <span className="hint">your number is your sign-in. hosts text it when a plan changes.</span>
               </div>
             ) : (
               <div className="field">
-                <label htmlFor="you-phone">phone for day-of texts</label>
+                <label htmlFor="you-phone">phone</label>
                 <input id="you-phone" className="input" type="tel" value={state.you.phone} placeholder="optional" onChange={(e) => dispatch({ type: 'you', patch: { phone: e.target.value } })} />
               </div>
             )}
             <div className="row gap-12" style={{ justifyContent: 'space-between' }}>
               <div className="stack gap-4">
                 <span className="small strong">familiar faces</span>
-                <span className="hint">see people you follow on discovery cards, and let them see you. off means neither.</span>
+                <span className="hint">show people you follow on nearby plans</span>
               </div>
               <Switch on={state.you.showFaces} label="familiar faces" onChange={(v) => dispatch({ type: 'you', patch: { showFaces: v } })} />
             </div>
@@ -89,7 +88,7 @@ export function You() {
         <section className="section pad">
           <SectionTitle right={<span className="chip muted">{following.length}</span>}>following</SectionTitle>
           {following.length === 0 ? (
-            <p className="small muted">follow a host from their plan and their public dinners show up under "hosts i follow".</p>
+            <p className="small muted">no one yet</p>
           ) : (
             <div className="row gap-8 wrap">
               {following.map((p) => (
@@ -104,7 +103,7 @@ export function You() {
 
       {inbox.length > 0 && (
         <section className="section pad">
-          <SectionTitle>texts you got</SectionTitle>
+          <SectionTitle>texts</SectionTitle>
           <div className="list card" style={{ padding: '0 16px' }}>
             {inbox.map((t) => (
               <div key={t.id} className="list-item" style={{ alignItems: 'flex-start' }}>
@@ -114,7 +113,7 @@ export function You() {
                   <span className="small">{t.body.replace('{link}', '')}</span>
                   {t.planId && (
                     <Link to={`/p/${t.planId}`} className="text-btn lime" style={{ alignSelf: 'flex-start' }}>
-                      open the plan
+                      open
                     </Link>
                   )}
                 </div>
@@ -125,21 +124,13 @@ export function You() {
       )}
 
       <section className="section pad">
-        <SectionTitle>get pie on your phone</SectionTitle>
+        <SectionTitle>app</SectionTitle>
         <div className="card stack gap-10">
           <div className="row gap-12">
             <PieMark size={36} />
             <div className="stack gap-4 grow">
-              <span className="h3">{install.standalone ? "you're running the app" : 'add to your home screen'}</span>
-              <span className="hint">
-                {install.standalone
-                  ? 'installed. plans open full-screen and work offline.'
-                  : install.canPrompt
-                    ? 'one tap. opens like an app, works offline, no store.'
-                    : install.ios
-                      ? 'in Safari: share, then "add to home screen".'
-                      : 'open this in Chrome or Safari on your phone, then use the browser menu to add it.'}
-              </span>
+              <span className="h3">{install.standalone ? 'installed' : 'add to home screen'}</span>
+              {!install.standalone && !install.canPrompt && <span className="hint">{install.ios ? 'share, then add to home screen' : 'open in Safari or Chrome on your phone'}</span>}
             </div>
           </div>
           {install.canPrompt && !install.standalone && (
@@ -148,10 +139,10 @@ export function You() {
               className="btn btn-primary"
               onClick={async () => {
                 const r = await install.prompt()
-                if (r === 'accepted') toast('pie is on your home screen', 'check')
+                if (r === 'accepted') toast('installed', 'check')
               }}
             >
-              <Icon name="download" size={18} /> install pie
+              <Icon name="download" size={18} /> install
             </button>
           )}
         </div>
@@ -160,10 +151,9 @@ export function You() {
       {mode === 'local' ? (
         <>
           <section className="section pad">
-            <SectionTitle>switch seats</SectionTitle>
+            <SectionTitle>view as</SectionTitle>
             <div className="card stack gap-10">
-              <p className="small muted">This copy runs on your device with fictional people. Guests see invitations. Maya hosts the supper club and sees the roster, the composer, the numbers, and day-of changes.</p>
-              <div className="two">
+                            <div className="two">
                 <button type="button" className={`btn btn-sm ${host ? 'btn-ghost' : 'btn-primary'}`} onClick={() => dispatch({ type: 'role', role: 'guest' })}>
                   guest
                 </button>
@@ -175,21 +165,21 @@ export function You() {
                     nav('/host')
                   }}
                 >
-                  Maya · host
+                  Maya, host
                 </button>
               </div>
             </div>
           </section>
 
           <section className="section pad">
-            <SectionTitle>other endings</SectionTitle>
+            <SectionTitle>demos</SectionTitle>
             <div className="list card" style={{ padding: '0 16px' }}>
               {[
-                ['/p/noor-birthday', 'lock', 'a forwarded private invite'],
-                ['/p/rooftop-movie', 'seat', 'a full dinner, with a waitlist'],
-                ['/p/tuesday-trivia', 'alert', 'a canceled plan'],
-                ['/p/pasta-club', 'dollar', 'a paid dinner with checkout'],
-                ['/p/october-supper', 'sparkle', 'a dinner that already happened'],
+                ['/p/noor-birthday', 'lock', 'forwarded private invite'],
+                ['/p/rooftop-movie', 'seat', 'full dinner'],
+                ['/p/tuesday-trivia', 'alert', 'canceled plan'],
+                ['/p/pasta-club', 'dollar', 'paid dinner'],
+                ['/p/october-supper', 'sparkle', 'past dinner'],
               ].map(([to, icon, label]) => (
                 <Link key={to} to={to} className="list-item" onClick={() => dispatch({ type: 'role', role: 'guest' })}>
                   <Icon name={icon} size={18} stroke="#A1A1AA" />
@@ -202,11 +192,8 @@ export function You() {
 
           <div className="pad mt-32 center">
             <button type="button" className="text-btn danger" onClick={() => setResetting(true)}>
-              reset the demo
+              reset
             </button>
-            <p className="eyebrow mt-16" style={{ opacity: 0.6 }}>
-              pie · plans that actually happen · everything here lives on this device
-            </p>
           </div>
         </>
       ) : (
@@ -220,14 +207,11 @@ export function You() {
               sign in
             </Link>
           )}
-          <p className="eyebrow" style={{ opacity: 0.6 }}>
-            pie pilot · texts go out by {remoteMe?.sms === 'twilio' ? 'SMS' : 'the demo outbox'}
-          </p>
         </div>
       )}
 
-      <Sheet open={resetting} onClose={() => setResetting(false)} title="start over?">
-        <p className="body muted">Clears your name, RSVPs, messages, and any plans you made. The fictional club comes back fresh.</p>
+      <Sheet open={resetting} onClose={() => setResetting(false)} title="reset?">
+        <p className="body muted">clears everything on this device.</p>
         <div className="stack gap-10 mt-16">
           <button
             type="button"
@@ -238,10 +222,10 @@ export function You() {
               nav('/')
             }}
           >
-            reset everything
+            reset
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => setResetting(false)}>
-            keep it
+            cancel
           </button>
         </div>
       </Sheet>

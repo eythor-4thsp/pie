@@ -166,7 +166,7 @@ export function Composer({ mode }: { mode: Mode }) {
   const saveDraft = async () => {
     if (!d.title.trim()) {
       setTried(true)
-      toast('a draft needs at least a name')
+      toast('add a name first')
       return null
     }
     const plan = build(mode === 'edit' && source ? source.status : 'draft')
@@ -195,12 +195,12 @@ export function Composer({ mode }: { mode: Mode }) {
         const recipients = goingIds(state, source.id).filter((pid) => pid !== me)
         if (changed.length === 0) {
           await dispatch({ type: 'savePlan', plan: { ...plan, revision: source.revision }, at: now() })
-          toast('saved. nothing guests need to hear about', 'check')
+          toast('saved', 'check')
         } else {
           const kind = changed[0].startsWith('time') ? 'time' : changed[0].startsWith('place') ? 'place' : 'details'
           const { updates: _u, revision: _r, ...patch } = plan
           await dispatch({ type: 'update', planId: source.id, kind, text: `${person(state, me).name} changed the plan: ${changed.join(' · ')}.`, patch, recipientIds: recipients, at: now() })
-          toast(`saved. texting ${recipients.length} guests`, 'send')
+          toast(`texting ${recipients.length}`, 'send')
         }
         nav(`/host/p/${source.id}`)
         return
@@ -208,7 +208,7 @@ export function Composer({ mode }: { mode: Mode }) {
       const plan = build('draft')
       await dispatch({ type: 'savePlan', plan, at: now() })
       await dispatch({ type: 'publish', planId: plan.id, at: now() })
-      toast(invited.length ? `it's live. inviting ${invited.length} people` : "it's live. copy the link", 'check')
+      toast(invited.length ? `live · ${invited.length} invited` : 'live', 'check')
       nav(`/host/p/${plan.id}`, { replace: true })
     } catch (e) {
       toast((e as Error).message)
@@ -226,14 +226,14 @@ export function Composer({ mode }: { mode: Mode }) {
         {mode === 'again' && source && (
           <div className="card card-lime stack gap-6">
             <span className="eyebrow lime">
-              <Icon name="repeat" size={12} /> starting from {source.title}
+              <Icon name="repeat" size={12} /> from {source.title}
             </span>
-            <span className="small">Title, venue, and club carried over. The RSVPs, the thread, the pinned note, and the text history start empty. The old dinner stays where it was.</span>
+            <span className="small">fresh date, guests, chat, and note</span>
           </div>
         )}
 
         <div className="field">
-          <label htmlFor="c-title">what are we doing?</label>
+          <label htmlFor="c-title">plan</label>
           <input id="c-title" className="input big" value={d.title} placeholder="friday dumplings" onChange={(e) => set('title', e.target.value)} autoFocus={mode !== 'edit'} />
           {tried && errors.title && <span className="hint error">{errors.title}</span>}
         </div>
@@ -246,11 +246,11 @@ export function Composer({ mode }: { mode: Mode }) {
               <input id="c-date" className="input" type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
             </div>
             <div className="field">
-              <label htmlFor="c-time">local time</label>
+              <label htmlFor="c-time">time</label>
               <input id="c-time" className="input" type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
             </div>
           </div>
-          {tried && errors.date ? <span className="hint error">{errors.date}</span> : startsAt ? <span className="hint">{when(startsAt)} · New York time</span> : null}
+          {tried && errors.date ? <span className="hint error">{errors.date}</span> : startsAt ? <span className="hint">{when(startsAt)}</span> : null}
         </div>
 
         <div className="stack gap-8">
@@ -276,38 +276,37 @@ export function Composer({ mode }: { mode: Mode }) {
         <div className="field">
           <label htmlFor="c-note">
             <span className="row gap-6">
-              <Icon name="pin" size={12} stroke="#D0F08B" /> meeting point, pinned for guests
+              <Icon name="pin" size={12} stroke="#D0F08B" /> meeting point
             </span>
           </label>
           <textarea id="c-note" className="input" value={d.hostNote} placeholder="Meet at the back table. It's under Maya." onChange={(e) => set('hostNote', e.target.value)} />
-          <span className="hint">guests see this once they're in. you can change it on the day and everyone gets a text.</span>
-        </div>
+                  </div>
 
         <div className="field">
-          <label htmlFor="c-desc">a line about it</label>
+          <label htmlFor="c-desc">details</label>
           <textarea id="c-desc" className="input" style={{ minHeight: 64 }} value={d.description} placeholder="optional" onChange={(e) => set('description', e.target.value)} />
         </div>
 
         <div className="two">
           <div className="field">
-            <label htmlFor="c-cap">seats, you included</label>
+            <label htmlFor="c-cap">seats</label>
             <input id="c-cap" className="input" type="number" min={1} max={200} value={d.capacity} onChange={(e) => set('capacity', parseInt(e.target.value || '1', 10))} />
           </div>
           <div className="field">
-            <label htmlFor="c-cost">cost per person, $</label>
+            <label htmlFor="c-cost">cost, $</label>
             <input id="c-cost" className="input" type="number" min={0} step={1} value={d.cost} onChange={(e) => set('cost', parseInt(e.target.value || '0', 10))} />
           </div>
         </div>
 
         {d.cost > 0 && (
           <div className="stack gap-8">
-            <span className="eyebrow">how they pay</span>
+            <span className="eyebrow">payment</span>
             {(['table', 'checkout'] as PaymentMode[]).map((pm) => (
               <button key={pm} type="button" className={`option ${d.payment === pm ? 'on' : ''}`} onClick={() => set('payment', pm)}>
                 <span className="radio">{d.payment === pm && <Icon name="check" size={12} strokeWidth={3.5} />}</span>
                 <span className="stack gap-4">
-                  <span className="small strong">{pm === 'table' ? 'settle up at the table' : 'pay when they say yes'}</span>
-                  <span className="hint">{pm === 'table' ? 'the price shows on the invite. you collect it yourself.' : 'a seat is held for 10 minutes while they pay. one charge, one ticket, one seat. you can refund from the roster.'}</span>
+                  <span className="small strong">{pm === 'table' ? 'at the table' : 'pay on rsvp'}</span>
+                  <span className="hint">{pm === 'table' ? 'you collect it' : 'seat held 10 min while they pay. refund from the roster.'}</span>
                 </span>
               </button>
             ))}
@@ -315,7 +314,7 @@ export function Composer({ mode }: { mode: Mode }) {
         )}
 
         <div className="stack gap-8">
-          <span className="eyebrow">who can see it</span>
+          <span className="eyebrow">audience</span>
           {(['invited', 'link', 'public'] as Audience[]).map((a) => (
             <button key={a} type="button" className={`option ${d.audience === a ? 'on' : ''}`} onClick={() => set('audience', a)}>
               <span className="radio">{d.audience === a && <Icon name="check" size={12} strokeWidth={3.5} />}</span>
@@ -332,12 +331,12 @@ export function Composer({ mode }: { mode: Mode }) {
 
         {myClub && (
           <div className="stack gap-8">
-            <span className="eyebrow">part of a club?</span>
+            <span className="eyebrow">club</span>
             <button type="button" className={`option ${d.clubId === myClub.id ? 'on' : ''}`} onClick={() => set('clubId', d.clubId === myClub.id ? '' : myClub.id)}>
               <Checkbox on={d.clubId === myClub.id} />
               <span className="stack gap-4">
                 <span className="small strong">{myClub.name}</span>
-                <span className="hint">shows on the club page. members who want invitations hear about it.</span>
+                <span className="hint">shows on the club page</span>
               </span>
             </button>
           </div>
@@ -345,13 +344,13 @@ export function Composer({ mode }: { mode: Mode }) {
 
         {mode === 'again' && review ? (
           <div className="stack gap-8">
-            <SectionTitle right={<span className="chip lime">{review.final.length} will get it</span>}>who gets the invite</SectionTitle>
+            <SectionTitle right={<span className="chip lime">{review.final.length}</span>}>invites</SectionTitle>
             <div className="card stack gap-12">
-              <AudienceGroup label={`club members who want invitations (${review.members.length})`} people={review.members} />
-              <AudienceGroup label={`came to ${source?.title ?? 'last time'} (${review.previous.length})`} people={review.previous} />
+              <AudienceGroup label={`members · ${review.members.length}`} people={review.members} />
+              <AudienceGroup label={`came last time · ${review.previous.length}`} people={review.previous} />
               {review.duplicates.length > 0 && (
                 <span className="hint">
-                  <Icon name="check" size={12} stroke="#D0F08B" /> {review.duplicates.map((p) => p.name).join(', ')} {review.duplicates.length === 1 ? 'is' : 'are'} in both groups, counted once.
+                  counted once: {review.duplicates.map((p) => p.name).join(', ')}
                 </span>
               )}
               {review.excluded.length > 0 && <span className="hint">not invited: {review.excluded.map((e) => `${e.person.name} (${e.reason})`).join(', ')}.</span>}
@@ -367,7 +366,7 @@ export function Composer({ mode }: { mode: Mode }) {
           </div>
         ) : (
           <div className="stack gap-8">
-            <SectionTitle right={<span className="chip muted">{invited.length} picked</span>}>invite people</SectionTitle>
+            <SectionTitle right={<span className="chip muted">{invited.length}</span>}>invite</SectionTitle>
             <div className="row gap-8 wrap">
               {people.map((p) => {
                 const on = d.invitedIds.includes(p.id)
@@ -383,8 +382,7 @@ export function Composer({ mode }: { mode: Mode }) {
                 </button>
               )}
             </div>
-            <span className="hint">{d.audience === 'invited' ? 'only these people can open the link. you can add people by phone from the roster after publishing.' : 'they get a text. anyone else with the link can still join.'}</span>
-          </div>
+                      </div>
         )}
 
         <div className="stack gap-8">
@@ -393,7 +391,7 @@ export function Composer({ mode }: { mode: Mode }) {
           <div className="row gap-8 wrap">
             {TONES.map((t) => (
               <button key={t} type="button" className={`chip selectable ${!d.coverSrc && d.coverTone === t ? 'on' : ''}`} onClick={() => setD((x) => ({ ...x, coverTone: t, coverSrc: '' }))}>
-                {t} poster
+                {t}
               </button>
             ))}
             <label className="chip selectable" style={{ cursor: 'pointer' }}>
@@ -414,12 +412,11 @@ export function Composer({ mode }: { mode: Mode }) {
               />
             </label>
           </div>
-          <span className="hint">a candid photo of the actual thing beats a poster. the poster is there so nothing ships blank.</span>
-        </div>
+                  </div>
 
         <div className="stack gap-10">
           <button type="button" className="btn btn-primary" onClick={publish} disabled={busy}>
-            {mode === 'edit' && source?.status === 'published' ? 'save changes' : invited.length ? `publish & invite ${invited.length}` : 'publish'}
+            {mode === 'edit' && source?.status === 'published' ? 'save' : invited.length ? `publish · invite ${invited.length}` : 'publish'}
           </button>
           {!(mode === 'edit' && source?.status === 'published') && (
             <div className="two">
@@ -427,12 +424,12 @@ export function Composer({ mode }: { mode: Mode }) {
                 save draft
               </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={preview}>
-                <Icon name="eye" size={16} /> preview as guest
+                <Icon name="eye" size={16} /> preview
               </button>
             </div>
           )}
-          {tried && !publishable && <span className="hint error center">fill in the bits marked above and this goes live.</span>}
-          {mode === 'edit' && source?.status === 'published' && <span className="hint center">guests who said yes get one text with what changed. pending invites see the new details when they open the link.</span>}
+          {tried && !publishable && <span className="hint error center">fix the fields above</span>}
+          {mode === 'edit' && source?.status === 'published' && <span className="hint center">guests get one text about the change</span>}
           {mode === 'edit' && source?.status === 'draft' && (
             <button
               type="button"
@@ -440,11 +437,11 @@ export function Composer({ mode }: { mode: Mode }) {
               style={{ alignSelf: 'center', marginTop: 8 }}
               onClick={async () => {
                 await dispatch({ type: 'deletePlan', planId: source.id })
-                toast('draft deleted')
+                toast('deleted')
                 nav('/host', { replace: true })
               }}
             >
-              delete this draft
+              delete draft
             </button>
           )}
         </div>

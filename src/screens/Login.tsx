@@ -56,8 +56,7 @@ export function Login() {
       <div className="screen">
         <TopBar back="/" />
         <div className="pad stack gap-12">
-          <h1 className="title">no sign-in needed here</h1>
-          <p className="body muted">This copy runs on your device only. The pilot server adds phone sign-in.</p>
+          <h1 className="title">no sign-in needed</h1>
         </div>
       </div>
     )
@@ -68,12 +67,8 @@ export function Login() {
       <TopBar back={next} />
       <div className="pad stack gap-16" style={{ paddingTop: 24 }}>
         <PieMark size={40} />
-        <h1 className="title">{step === 'name' ? 'and you are?' : step === 'code' ? 'check your texts' : 'your number, a code, done'}</h1>
-        <p className="body muted">
-          {step === 'phone' && 'No account to set up. The number is how the host reaches you if the table moves.'}
-          {step === 'code' && `We texted a 6-digit code to ${phone}. It works for 10 minutes.`}
-          {step === 'name' && 'What the host and the table should call you.'}
-        </p>
+        <h1 className="title">{step === 'name' ? 'your name' : step === 'code' ? 'check your texts' : 'sign in'}</h1>
+        {step === 'code' && <p className="body muted">code sent to {phone}</p>}
 
         {step === 'phone' && (
           <form
@@ -89,9 +84,9 @@ export function Login() {
             </div>
             {error && <span className="hint error">{error}</span>}
             <button type="submit" className="btn btn-primary" disabled={busy || phone.replace(/\D/g, '').length < 8}>
-              text me a code
+              send code
             </button>
-            {me?.sms === 'console' && <span className="hint center">pilot server in demo mode: the code shows up here instead of by text.</span>}
+            {me?.sms === 'console' && <span className="hint center">demo: the code appears on the next screen</span>}
           </form>
         )}
 
@@ -106,7 +101,7 @@ export function Login() {
             <div className="field">
               <label htmlFor="lg-code">code</label>
               <input id="lg-code" className="input" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 24, letterSpacing: '0.2em' }} />
-              {devCode && <span className="hint lime">demo mode: your code is {devCode}</span>}
+              {devCode && <span className="hint lime">demo code · {devCode}</span>}
             </div>
             {error && <span className="hint error">{error}</span>}
             <button type="submit" className="btn btn-primary" disabled={busy || code.length < 6}>
@@ -131,7 +126,7 @@ export function Login() {
               <input id="lg-name" className="input" autoComplete="name" autoFocus placeholder={me?.user?.name || 'what people call you'} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <button type="submit" className="btn btn-primary" disabled={!name.trim() && !me?.user?.name}>
-              {me?.user?.name && !name.trim() ? `keep "${me.user.name}"` : "that's me"}
+              {me?.user?.name && !name.trim() ? `keep ${me.user.name}` : 'done'}
             </button>
           </form>
         )}

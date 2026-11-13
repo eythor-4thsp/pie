@@ -52,8 +52,7 @@ export function Discover() {
       />
       <div className="pad stack gap-8">
         <h1 className="title">free this weekend?</h1>
-        <p className="body muted">public plans near you with a seat open. same yes as any invite.</p>
-      </div>
+              </div>
 
       <div className="pad mt-16 row gap-8 wrap">
         {HOODS.map((h) => (
@@ -73,18 +72,17 @@ export function Discover() {
           <Icon name="users" size={14} /> friends going
         </button>
         <button type="button" className={`chip selectable ${followed ? 'on' : ''}`} onClick={() => setFollowed(!followed)}>
-          hosts i follow
+          following
         </button>
       </div>
 
       <div className="pad mt-24 stack gap-12">
         {results.length === 0 ? (
           <Empty>
-            nothing {weekend ? 'this weekend' : 'coming up'} {hood ? `in ${hood}` : 'nearby'} yet.
+            nothing yet
             {nextUp && (
               <>
-                {' '}
-                next up:{' '}
+                {' · next: '}
                 <Link to={`/p/${nextUp.id}`} className="lime">
                   {nextUp.title}
                 </Link>
@@ -144,9 +142,6 @@ export function Discover() {
         )}
       </div>
 
-      <p className="pad eyebrow mt-24" style={{ opacity: 0.7 }}>
-        a familiar face shows only when you follow them and they allow it. the eye switches the cue off to test the card without it.
-      </p>
     </div>
   )
 }

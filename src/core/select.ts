@@ -94,11 +94,7 @@ export function audienceLabel(a: Audience): string {
 }
 
 export function audienceConsequence(a: Audience): string {
-  return a === 'invited'
-    ? 'Only people you invite can open it. A forwarded link shows the title and nothing else.'
-    : a === 'link'
-      ? 'Anyone who gets the link can join. It stays out of search.'
-      : 'It can show up in discovery for people nearby. Anyone can join until it fills.'
+  return a === 'invited' ? 'only invited people can open it' : a === 'link' ? 'anyone with the link can join. not in search.' : 'shows in nearby. anyone can join.'
 }
 
 export interface AudienceReview {

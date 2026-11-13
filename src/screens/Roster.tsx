@@ -30,7 +30,6 @@ export function Roster() {
         <TopBar back="/host" />
         <div className="pad stack gap-8">
           <h1 className="title">not your plan</h1>
-          <p className="body muted">Only the host and their helpers see the roster.</p>
         </div>
       </div>
     )
@@ -74,11 +73,11 @@ export function Roster() {
         </div>
         <div className="stack gap-4 grow">
           <div className="row gap-8 wrap">
-            {plan.status === 'draft' ? <span className="chip muted">draft</span> : plan.status === 'canceled' ? <span className="chip cherry">canceled</span> : <span className="chip lime">live · v{plan.revision}</span>}
+            {plan.status === 'draft' ? <span className="chip muted">draft</span> : plan.status === 'canceled' ? <span className="chip cherry">canceled</span> : <span className="chip lime">live</span>}
             <span className="chip">
               <Icon name={plan.audience === 'invited' ? 'lock' : plan.audience === 'link' ? 'link' : 'globe'} size={12} /> {audienceLabel(plan.audience)}
             </span>
-            {!owner && <span className="chip outline-lime">you help host</span>}
+            {!owner && <span className="chip outline-lime">helper</span>}
           </div>
           <h1 className="h2">{plan.title}</h1>
           <span className="eyebrow">
@@ -117,11 +116,11 @@ export function Roster() {
       {plan.status === 'published' && !past && (
         <div className="pad mt-16 stack gap-10">
           <button type="button" className="btn btn-primary" onClick={() => setChanging(true)}>
-            <Icon name="pin" size={18} /> update the meeting point
+            <Icon name="pin" size={18} /> update meeting point
           </button>
           <div className="two">
             <Link to={`/host/p/${plan.id}/edit`} className="btn btn-ghost btn-sm">
-              <Icon name="edit" size={16} /> edit details
+              <Icon name="edit" size={16} /> edit
             </Link>
             <Link to={`/p/${plan.id}?preview=1`} className="btn btn-ghost btn-sm">
               <Icon name="eye" size={16} /> guest view
@@ -129,11 +128,11 @@ export function Roster() {
           </div>
           <div className="two">
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setInviting(true)}>
-              <Icon name="plus" size={16} /> invite more
+              <Icon name="plus" size={16} /> invite
             </button>
             {owner && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHelpers(true)}>
-                <Icon name="users" size={16} /> {plan.cohostIds.length ? `${plural(plan.cohostIds.length, 'helper')}` : 'add a helper'}
+                <Icon name="users" size={16} /> {plan.cohostIds.length ? plural(plan.cohostIds.length, 'helper') : 'add helper'}
               </button>
             )}
           </div>
@@ -150,11 +149,11 @@ export function Roster() {
               <Icon name="check" size={16} /> {plan.attendedIds ? `${plan.attendedIds.length} came` : 'mark who came'}
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDebriefing(true)}>
-              <Icon name="edit" size={16} /> {plan.debrief ? 'debrief done' : 'debrief'}
+              <Icon name="edit" size={16} /> debrief
             </button>
           </div>
           <Link to="/host/insights" className="text-btn lime" style={{ alignSelf: 'center' }}>
-            see the numbers
+            numbers
           </Link>
         </div>
       )}
@@ -172,7 +171,7 @@ export function Roster() {
         <section className="section pad">
           <div className="card stack gap-8">
             <span className="eyebrow">
-              <Icon name="clock" size={12} /> reminder texts to everyone going
+              <Icon name="clock" size={12} /> reminders
             </span>
             {(['day', 'soon'] as const).map((which) => {
               const sent = plan.remindersSent.includes(which)
@@ -187,10 +186,10 @@ export function Roster() {
                       className="chip"
                       onClick={() => {
                         void dispatch({ type: 'remind', planId: plan.id, which, at: now() })
-                        toast(`reminder going to ${recipients.length}`, 'send')
+                        toast('sending', 'send')
                       }}
                     >
-                      goes out automatically · send now
+                      send now
                     </button>
                   )}
                 </div>
@@ -210,7 +209,7 @@ export function Roster() {
               <span className="small">{plural(going.filter((r) => ticketOf(state, plan.id, r.personId)?.status === 'paid').length, 'paid seat')}</span>
               <span className="mono">{money(revenue)} collected</span>
             </div>
-            {holding.length > 0 && <span className="hint">{plural(holding.length, 'seat')} held during checkout right now.</span>}
+            {holding.length > 0 && <span className="hint">{holding.length} in checkout</span>}
           </div>
         </section>
       )}
@@ -243,14 +242,12 @@ export function Roster() {
                       className="chip cherry"
                       onClick={() => {
                         void dispatch({ type: 'refund', planId: plan.id, personId: r.personId, at: now() })
-                        toast(`refunded $${t.amount} to ${person(state, r.personId).name}`)
+                        toast(`refunded $${t.amount}`)
                       }}
                     >
                       refund
                     </button>
-                  ) : (
-                    <span className="chip lime">confirmed</span>
-                  )
+                  ) : undefined
                 }
               />
             )
@@ -286,7 +283,7 @@ export function Roster() {
                 <Row
                   key={pid}
                   p={person(state, pid)}
-                  note={opened ? 'opened the link · no answer yet' : "hasn't opened the link yet"}
+                  note={opened ? 'opened' : 'not opened'}
                   extra={
                     !past ? (
                       <span className="row gap-10">
@@ -297,7 +294,7 @@ export function Roster() {
                           style={!nudgeable ? { opacity: 0.5, borderBottomColor: 'transparent' } : undefined}
                           onClick={() => {
                             void dispatch({ type: 'nudge', planId: plan.id, personId: pid, at: now() })
-                            toast(`nudged ${person(state, pid).name}`, 'send')
+                            toast('nudged', 'send')
                           }}
                         >
                           {nudgeable ? 'nudge' : 'nudged today'}
@@ -330,7 +327,7 @@ export function Roster() {
       )}
 
       <section className="section pad">
-        <SectionTitle>what changed, and who heard</SectionTitle>
+        <SectionTitle>changes</SectionTitle>
         <div className="timeline">
           <div className="timeline-line" />
           {[...plan.updates].reverse().map((u) => {
@@ -357,7 +354,7 @@ export function Roster() {
                           className="btn btn-ghost btn-sm btn-auto"
                           onClick={() => {
                             void dispatch({ type: 'retry', planId: plan.id, updateId: u.id, at: now() })
-                            toast(`resending to ${failed.map((f) => person(state, f.personId).name).join(', ')} only`, 'refresh')
+                            toast('resending', 'refresh')
                           }}
                         >
                           <Icon name="refresh" size={16} /> retry {failed.length} failed
@@ -374,7 +371,7 @@ export function Roster() {
 
       {texts.length > 0 && (
         <section className="section pad">
-          <SectionTitle>texts sent for this plan · {texts.length}</SectionTitle>
+          <SectionTitle>texts · {texts.length}</SectionTitle>
           <div className="list">
             {texts.slice(0, 8).map((t) => (
               <div key={t.id} className="list-item" style={{ alignItems: 'flex-start' }}>
@@ -396,13 +393,13 @@ export function Roster() {
         <div className="pad mt-32 center">
           <button type="button" className="text-btn danger" onClick={() => setCanceling(true)}>
             <span className="row gap-6">
-              <Icon name="trash" size={14} /> cancel this dinner
+              <Icon name="trash" size={14} /> cancel
             </span>
           </button>
         </div>
       )}
 
-      <Sheet open={changing} onClose={() => setChanging(false)} title="the table moved?">
+      <Sheet open={changing} onClose={() => setChanging(false)} title="update">
         <ChangeForm
           note={plan.hostNote}
           startsAt={plan.startsAt}
@@ -426,61 +423,61 @@ export function Roster() {
               at: now(),
             })
             setChanging(false)
-            toast(`saved once. texting ${recipients.length} guests`, 'send')
+            toast(`texting ${recipients.length}`, 'send')
           }}
         />
       </Sheet>
 
-      <Sheet open={canceling} onClose={() => setCanceling(false)} title="cancel the dinner?">
+      <Sheet open={canceling} onClose={() => setCanceling(false)} title="cancel?">
         <CancelForm
           count={recipients.length}
           paid={paid}
           onCancel={(reason) => {
             void dispatch({ type: 'cancel', planId: plan.id, text: `${person(state, me).name} canceled: ${reason}`, at: now() })
             setCanceling(false)
-            toast(`canceled. told ${recipients.length} guests`)
+            toast('canceled')
           }}
         />
       </Sheet>
 
-      <Sheet open={reconciling} onClose={() => setReconciling(false)} title="who actually came?">
+      <Sheet open={reconciling} onClose={() => setReconciling(false)} title="who came?">
         <ReconcileForm
           people={[person(state, plan.hostId), ...going.map((r) => person(state, r.personId))]}
           initial={plan.attendedIds ?? [plan.hostId, ...going.map((r) => r.personId)]}
           onSave={(ids) => {
             void dispatch({ type: 'reconcile', planId: plan.id, attendedIds: ids })
             setReconciling(false)
-            toast(`${ids.length} came. intent and attendance are kept apart`, 'check')
+            toast('saved', 'check')
           }}
         />
       </Sheet>
 
-      <Sheet open={debriefing} onClose={() => setDebriefing(false)} title="how did it go?">
+      <Sheet open={debriefing} onClose={() => setDebriefing(false)} title="debrief">
         <DebriefForm
           initial={plan.debrief}
           minutesAuto={plan.publishedAt && plan.createdAt ? Math.max(0, Math.round((new Date(plan.publishedAt).getTime() - new Date(plan.createdAt).getTime()) / 60000)) : null}
           onSave={(d) => {
             void dispatch({ type: 'debrief', planId: plan.id, debrief: d })
             setDebriefing(false)
-            toast('debrief saved', 'check')
+            toast('saved', 'check')
           }}
         />
       </Sheet>
 
-      <Sheet open={inviting} onClose={() => setInviting(false)} title="invite more people">
+      <Sheet open={inviting} onClose={() => setInviting(false)} title="invite">
         <InviteForm
           people={Object.values(state.people).filter((p) => !p.blocked && !plan.invitedIds.includes(p.id) && p.id !== plan.hostId)}
           byPhone={mode === 'remote'}
           onPick={(ids) => {
             void dispatch({ type: 'invite', planId: plan.id, personIds: ids, at: now() })
             setInviting(false)
-            toast(`invited ${ids.length}. they get a text`, 'send')
+            toast(`invited ${ids.length}`, 'send')
           }}
           onPhone={async (phone, name) => {
             try {
               await invitePhone(plan.id, phone, name)
               setInviting(false)
-              toast(`invited ${name || phone}`, 'send')
+              toast('invited', 'send')
             } catch (e) {
               toast((e as Error).message)
             }
@@ -489,7 +486,7 @@ export function Roster() {
       </Sheet>
 
       <Sheet open={!!removing} onClose={() => setRemoving(null)} title={`remove ${removing ? person(state, removing).name : ''}?`}>
-        <p className="body muted">Their invitation is revoked. The link stops showing them the address, the roster, and the thread. If they had a seat, it goes to the next person in line.</p>
+        <p className="body muted">their invite is revoked and the seat moves on.</p>
         <div className="stack gap-10 mt-16">
           <button
             type="button"
@@ -497,19 +494,19 @@ export function Roster() {
             onClick={() => {
               if (removing) void dispatch({ type: 'uninvite', planId: plan.id, personId: removing, at: now() })
               setRemoving(null)
-              toast('removed. access rechecked')
+              toast('removed')
             }}
           >
-            remove them
+            remove
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => setRemoving(null)}>
-            keep them
+            keep
           </button>
         </div>
       </Sheet>
 
       <Sheet open={helpers} onClose={() => setHelpers(false)} title="who helps host?">
-        <p className="small muted">A helper sees this roster, can pin the meeting point, invite people, and mark who came. Only you can cancel or refund. It applies to this dinner only.</p>
+        <p className="small muted">helpers see the roster, pin notes, invite, and mark attendance.</p>
         <div className="list mt-12">
           {[...plan.cohostIds, ...going.map((r) => r.personId).filter((pid) => !plan.cohostIds.includes(pid))].map((pid) => {
             const on = plan.cohostIds.includes(pid)
@@ -521,7 +518,7 @@ export function Roster() {
               </button>
             )
           })}
-          {going.length === 0 && plan.cohostIds.length === 0 && <span className="small muted">helpers come from people who said yes.</span>}
+          {going.length === 0 && plan.cohostIds.length === 0 && <span className="small muted">no one has said yes yet</span>}
         </div>
       </Sheet>
     </div>
@@ -555,7 +552,7 @@ function RecipientRow({ recipients, people, youName }: { recipients: Recipient[]
   )
 }
 
-function ChangeForm({ note: initial, startsAt, recipients, pendingCount, onSave }: { note: string; startsAt: string; recipients: Person[]; pendingCount: number; onSave: (note: string, newStart: string | null) => void }) {
+function ChangeForm({ note: initial, startsAt, recipients, onSave }: { note: string; startsAt: string; recipients: Person[]; pendingCount: number; onSave: (note: string, newStart: string | null) => void }) {
   const [note, setNote] = useState(initial)
   const t = toInputValue(startsAt)
   const [tm, setTm] = useState(t.time)
@@ -573,29 +570,27 @@ function ChangeForm({ note: initial, startsAt, recipients, pendingCount, onSave 
     >
       <div className="field">
         <label htmlFor="ch-note">meeting point</label>
-        <textarea id="ch-note" className="input" value={note} autoFocus onChange={(e) => setNote(e.target.value)} placeholder="Back room now, not the back table. Still under Maya." />
+        <textarea id="ch-note" className="input" value={note} autoFocus onChange={(e) => setNote(e.target.value)} placeholder="Back room. Still under Maya." />
       </div>
       <div className="field" style={{ maxWidth: 180 }}>
         <label htmlFor="ch-time">time</label>
         <input id="ch-time" className="input" type="time" value={tm} onChange={(e) => setTm(e.target.value)} />
       </div>
       <div className="card stack gap-8">
-        <span className="eyebrow">will text {recipients.length} guests who said yes</span>
+        <span className="eyebrow">texts {recipients.length}</span>
         <div className="row gap-6 wrap">
           {recipients.map((p) => (
             <span key={p.id} className="chip">
               <Avatar person={p} size={16} /> {p.name}
             </span>
           ))}
-          {recipients.length === 0 && <span className="small muted">nobody has said yes yet</span>}
+          {recipients.length === 0 && <span className="small muted">no one yet</span>}
         </div>
-        {pendingCount > 0 && <span className="hint">{plural(pendingCount, 'pending invite')} will just see the new details when they open the link. no text.</span>}
-      </div>
+              </div>
       <button type="submit" className="btn btn-primary" disabled={saved}>
-        save and send once
+        save and text
       </button>
-      <span className="hint center">saved first, then sent. a retry only goes to anyone whose text failed.</span>
-    </form>
+          </form>
   )
 }
 
@@ -609,16 +604,13 @@ function CancelForm({ count, paid, onCancel }: { count: number; paid: boolean; o
         onCancel(reason.trim() || 'plans changed.')
       }}
     >
-      <p className="body muted">
-        The link keeps working and shows it's off. {count > 0 ? `${plural(count, 'guest')} who said yes get a text.` : 'Nobody has said yes yet.'}
-        {paid ? ' Refund paid seats from the roster afterwards.' : ''}
-      </p>
+      <p className="body muted">{count > 0 ? `${plural(count, 'guest')} get a text.` : 'no one has said yes yet.'}{paid ? ' refund paid seats afterwards.' : ''}</p>
       <div className="field">
-        <label htmlFor="cx-reason">tell them why, in a line</label>
-        <input id="cx-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="the restaurant lost the booking. next week, same place." />
+        <label htmlFor="cx-reason">why</label>
+        <input id="cx-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="lost the booking. next week." />
       </div>
       <button type="submit" className="btn btn-danger-solid">
-        cancel the dinner
+        cancel it
       </button>
     </form>
   )
@@ -628,8 +620,7 @@ function ReconcileForm({ people, initial, onSave }: { people: Person[]; initial:
   const [ids, setIds] = useState<string[]>(initial)
   return (
     <div className="stack gap-12">
-      <p className="small muted">Said yes is intent. This is who turned up. The club uses it to decide who's eligible next time, and the numbers use it for show-up rate.</p>
-      <div className="list">
+            <div className="list">
         {people.map((p) => {
           const on = ids.includes(p.id)
           return (
@@ -642,7 +633,7 @@ function ReconcileForm({ people, initial, onSave }: { people: Person[]; initial:
         })}
       </div>
       <button type="button" className="btn btn-primary" onClick={() => onSave(ids)}>
-        save attendance
+        save
       </button>
     </div>
   )
@@ -661,27 +652,26 @@ function DebriefForm({ initial, minutesAuto, onSave }: { initial?: Debrief; minu
         onSave({ at: now(), minutesToPublish: minutes, interventions, outsideTexts, notes: notes.trim() })
       }}
     >
-      <p className="small muted">Three numbers and a line. This is how we tell which work the product removed and which still fell to you.</p>
-      <div className="field">
-        <label htmlFor="db-min">minutes from first draft to publish{minutesAuto !== null ? ` (we clocked ${minutesAuto})` : ''}</label>
+            <div className="field">
+        <label htmlFor="db-min">minutes to publish</label>
         <input id="db-min" className="input" type="number" min={0} value={minutes} onChange={(e) => setMinutes(parseInt(e.target.value || '0', 10))} />
       </div>
       <div className="two">
         <div className="field">
-          <label htmlFor="db-int">things you fixed by hand</label>
+          <label htmlFor="db-int">fixed by hand</label>
           <input id="db-int" className="input" type="number" min={0} value={interventions} onChange={(e) => setInterventions(parseInt(e.target.value || '0', 10))} />
         </div>
         <div className="field">
-          <label htmlFor="db-txt">logistics texts outside pie</label>
+          <label htmlFor="db-txt">texts outside pie</label>
           <input id="db-txt" className="input" type="number" min={0} value={outsideTexts} onChange={(e) => setOutsideTexts(parseInt(e.target.value || '0', 10))} />
         </div>
       </div>
       <div className="field">
-        <label htmlFor="db-notes">what would you change</label>
-        <textarea id="db-notes" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="two people asked for the address even though it was on the page." />
+        <label htmlFor="db-notes">notes</label>
+        <textarea id="db-notes" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" />
       </div>
       <button type="submit" className="btn btn-primary">
-        save debrief
+        save
       </button>
     </form>
   )
@@ -695,7 +685,7 @@ function InviteForm({ people, byPhone, onPick, onPhone }: { people: Person[]; by
     <div className="stack gap-16">
       {people.length > 0 && (
         <div className="stack gap-8">
-          <span className="eyebrow">people you know</span>
+          <span className="eyebrow">people</span>
           <div className="row gap-8 wrap">
             {people.map((p) => {
               const on = ids.includes(p.id)
@@ -719,17 +709,17 @@ function InviteForm({ people, byPhone, onPick, onPhone }: { people: Person[]; by
             onPhone(phone, name)
           }}
         >
-          <span className="eyebrow">or by phone</span>
+          <span className="eyebrow">by phone</span>
           <div className="two">
             <input className="input" type="tel" placeholder="+1 212 555 0199" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="phone" />
             <input className="input" placeholder="their name" value={name} onChange={(e) => setName(e.target.value)} aria-label="name" />
           </div>
           <button type="submit" className="btn btn-ghost btn-sm" disabled={phone.replace(/\D/g, '').length < 8}>
-            text them an invite
+            invite
           </button>
         </form>
       )}
-      {people.length === 0 && !byPhone && <span className="small muted">everyone you know is already invited.</span>}
+      {people.length === 0 && !byPhone && <span className="small muted">everyone's invited</span>}
     </div>
   )
 }

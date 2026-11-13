@@ -25,16 +25,15 @@ export function ClubForm({ initial, submitLabel, onSave }: { initial: ClubFields
       }}
     >
       <div className="field">
-        <label htmlFor="cl-name">what's it called?</label>
+        <label htmlFor="cl-name">name</label>
         <input id="cl-name" className="input big" style={{ fontSize: 30 }} value={f.name} placeholder="West Village Supper Club" onChange={(e) => set('name', e.target.value)} autoFocus />
       </div>
       <div className="field">
-        <label htmlFor="cl-cadence">how often, roughly</label>
+        <label htmlFor="cl-cadence">how often</label>
         <input id="cl-cadence" className="input" value={f.cadence} placeholder="every other Friday, 7:30-ish" onChange={(e) => set('cadence', e.target.value)} />
-        <span className="hint">people join knowing what they're signing up for. a monthly club needs a longer runway between dinners.</span>
-      </div>
+              </div>
       <div className="stack gap-8">
-        <span className="eyebrow">where, mostly</span>
+        <span className="eyebrow">neighborhood</span>
         <div className="row gap-8 wrap">
           {HOODS.map((n) => (
             <button key={n} type="button" className={`chip selectable ${f.neighborhood === n ? 'on' : ''}`} onClick={() => set('neighborhood', n)}>
@@ -44,7 +43,7 @@ export function ClubForm({ initial, submitLabel, onSave }: { initial: ClubFields
         </div>
       </div>
       <div className="field">
-        <label htmlFor="cl-desc">what happens</label>
+        <label htmlFor="cl-desc">about</label>
         <textarea id="cl-desc" className="input" value={f.description} placeholder="Eight-ish people, one long table. You come, you eat, you end up talking to whoever's next to you." onChange={(e) => set('description', e.target.value)} />
       </div>
       <button type="submit" className="btn btn-primary" disabled={!ok}>
@@ -68,7 +67,6 @@ export function ClubNew() {
         <TopBar back="/host" />
         <div className="pad stack gap-12">
           <h1 className="title">you already run {existing.name}</h1>
-          <p className="body muted">One club per organizer for now. Edit it from the club page.</p>
         </div>
       </div>
     )
@@ -78,15 +76,14 @@ export function ClubNew() {
     <div className="screen">
       <TopBar back="/host" title="start a club" />
       <div className="pad stack gap-16">
-        <p className="body muted">A club is a home for the group between dinners: who runs it, what happens, how often, and the next one. Coming to a dinner, joining the club, and saying yes to the next invite stay three separate decisions.</p>
-        <ClubForm
+                <ClubForm
           initial={{ name: '', cadence: '', neighborhood: 'West Village', description: '' }}
-          submitLabel="start the club"
+          submitLabel="start"
           onSave={async (f) => {
             const id = `club_${f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'club'}_${Math.random().toString(36).slice(2, 6)}`
             try {
               await dispatch({ type: 'createClub', club: { id, ...f, organizerId: me, memberIds: [me], mutedIds: [], requestIds: [], listedIds: [me], posts: [], reports: [] } })
-              toast("it's yours. share the club page after the next dinner", 'check')
+              toast('club started', 'check')
               nav(`/club/${id}`, { replace: true })
             } catch (e) {
               toast((e as Error).message)

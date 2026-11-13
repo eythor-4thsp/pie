@@ -59,7 +59,7 @@ function ErrorBanner() {
       </span>
       <span className="row gap-12">
         <button type="button" className="text-btn lime" onClick={() => dispatch(error.action).catch(() => {})}>
-          try again
+          retry
         </button>
         <button type="button" className="text-btn" onClick={clearError} aria-label="dismiss">
           <Icon name="x" size={14} />

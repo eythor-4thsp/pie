@@ -37,10 +37,10 @@ export function Plans() {
         <h1 className="title">{name ? `hey ${name.split(' ')[0]}` : 'hey there'}</h1>
         <p className="body muted">
           {needsAnswer.length > 0
-            ? `${plural(needsAnswer.length, 'invite')} waiting on you`
+            ? `${plural(needsAnswer.length, 'invite')} waiting`
             : comingUp.length > 0
-              ? `${plural(comingUp.length, 'plan')} coming up. nothing to answer.`
-              : 'nothing on the calendar yet. that can change.'}
+              ? `${plural(comingUp.length, 'plan')} coming up`
+              : 'nothing yet'}
         </p>
       </div>
 
@@ -61,11 +61,9 @@ export function Plans() {
         <SectionTitle>coming up</SectionTitle>
         {comingUp.length === 0 ? (
           <Empty>
-            nothing yet. say yes to something, or{' '}
             <Link to="/host/new" className="lime">
               make a plan
             </Link>
-            .
           </Empty>
         ) : (
           <div className="stack gap-12">

@@ -33,7 +33,7 @@ export function Checkout() {
       <div className="screen">
         <TopBar back="/" />
         <div className="pad">
-          <h1 className="title">nothing to pay for</h1>
+          <h1 className="title">nothing to pay</h1>
         </div>
       </div>
     )
@@ -59,10 +59,10 @@ export function Checkout() {
       return
     }
     if (ok) {
-      toast(`paid ${money(plan.cost)}. you're in`, 'check')
+      toast("you're in", 'check')
       nav(`/p/${plan.id}`, { replace: true })
     } else {
-      toast('card declined. your seat was released')
+      toast('declined')
       setBusy(false)
       nav(`/p/${plan.id}`, { replace: true })
     }
@@ -87,22 +87,19 @@ export function Checkout() {
             <span className="small strong">total today</span>
             <span className="mono strong">{money(plan.cost)}</span>
           </div>
-          <p className="hint mt-8">
-            Full refund if {host.name} cancels. Refunds for a change of plans are up to {host.name}, through the plan page, up to the day before.
-          </p>
+          <p className="hint mt-8">full refund if {host.name} cancels.</p>
         </div>
 
         {holding ? (
           <div className="card card-lime stack gap-4">
             <span className="eyebrow lime">
-              <Icon name="clock" size={12} /> seat held for {left} more min
+              <Icon name="clock" size={12} /> seat held · {left} min
             </span>
-            <span className="small">Nobody else can take it while you finish.</span>
           </div>
         ) : (
           <div className="card card-cherry stack gap-8">
             <span className="eyebrow cherry">no seat held</span>
-            <span className="small">The hold ran out or the seat was never reserved. Go back and tap "i'm in" again.</span>
+            <span className="small">go back and tap i'm in.</span>
           </div>
         )}
 
@@ -116,7 +113,7 @@ export function Checkout() {
           <div className="field">
             <label htmlFor="ck-card">card number</label>
             <input id="ck-card" className="input" inputMode="numeric" autoComplete="cc-number" value={card} onChange={(e) => setCard(e.target.value)} />
-            <span className="hint">test processor: any number pays, one ending in 0000 is declined.</span>
+            <span className="hint">test: a number ending in 0000 declines</span>
           </div>
           <div className="two">
             <div className="field">
@@ -129,10 +126,9 @@ export function Checkout() {
             </div>
           </div>
           <button type="submit" className="btn btn-primary mt-8" disabled={!holding || !valid || busy}>
-            {busy ? 'charging…' : `pay ${money(plan.cost)} and take the seat`}
+            {busy ? 'charging…' : `pay ${money(plan.cost)}`}
           </button>
-          <span className="hint center">one charge, one ticket, one seat. you get a text receipt.</span>
-        </form>
+                  </form>
       </div>
     </div>
   )

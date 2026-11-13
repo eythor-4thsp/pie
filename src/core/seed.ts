@@ -113,7 +113,7 @@ export function buildSeed(now = new Date()): State {
           options: [
             { id: 'o1', text: 'drinks at Dante' },
             { id: 'o2', text: 'walk to the river' },
-            { id: 'o3', text: 'home, it is friday' },
+            { id: 'o3', text: 'home' },
           ],
           votes: { ben: 'o1', priya: 'o2', sam: 'o1', lena: 'o1' },
           at: iso(ago(now, 1, 20, 0)),

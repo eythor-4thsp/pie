@@ -28,8 +28,7 @@ export function Thread() {
       <div className="screen no-tabs">
         <TopBar back={plan ? `/p/${plan.id}` : '/'} />
         <div className="pad stack gap-8">
-          <h1 className="title">the chat is for people who are in</h1>
-          <p className="body muted">Say yes on the plan page and the thread opens up.</p>
+          <h1 className="title">say yes to join the chat</h1>
         </div>
       </div>
     )
@@ -50,7 +49,7 @@ export function Thread() {
   const pin = (t: string) => {
     const recipients = goingIds(state, plan.id).filter((pid) => pid !== plan.hostId)
     void dispatch({ type: 'pin', planId: plan.id, text: t, at: now() })
-    toast(`pinned. texting ${recipients.length} guests`, 'pin')
+    toast(`pinned · texting ${recipients.length}`, 'pin')
   }
 
   return (
@@ -73,10 +72,10 @@ export function Thread() {
       <div className="pad mt-16">
         <div className="card card-lime stack gap-6">
           <div className="row gap-6 eyebrow lime">
-            <Icon name="pin" size={13} stroke="#D0F08B" /> current meeting point · pinned by {host.name}
+            <Icon name="pin" size={13} stroke="#D0F08B" /> meeting point · {host.name}
           </div>
           <p className="body" style={{ fontSize: 16 }}>
-            {plan.hostNote || 'nothing pinned yet'}
+            {plan.hostNote || 'no note yet'}
           </p>
         </div>
       </div>
@@ -116,7 +115,7 @@ export function Thread() {
                   <span className="meta">{time(m.at)}</span>
                   {isHost && !isPinned && (
                     <button type="button" className="text-btn" style={{ fontFamily: 'var(--mono)', fontSize: 10 }} onClick={() => pin(m.text)}>
-                      pin as meeting point
+                      pin
                     </button>
                   )}
                 </div>
@@ -124,7 +123,7 @@ export function Thread() {
             </div>
           )
         })}
-        {msgs.length === 0 && <p className="small muted center">say hi. everyone who's in can see this.</p>}
+        {msgs.length === 0 && <p className="small muted center">say hi</p>}
         <div ref={endRef} />
       </div>
 
@@ -133,7 +132,7 @@ export function Thread() {
           <input
             className="input grow"
             style={{ borderRadius: 999 }}
-            placeholder={`message the ${plan.title.toLowerCase()} crew`}
+            placeholder="message"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -147,12 +146,12 @@ export function Thread() {
         </div>
       </div>
 
-      <Sheet open={asking} onClose={() => setAsking(false)} title="ask the group">
+      <Sheet open={asking} onClose={() => setAsking(false)} title="poll">
         <PollForm
           onSave={(question, options) => {
             void dispatch({ type: 'poll', planId: plan.id, poll: { id: uid('poll'), byId: me, question, options: options.map((t) => ({ id: uid('o'), text: t })), votes: {}, at: now() } })
             setAsking(false)
-            toast('asked. everyone in the thread can vote', 'check')
+            toast('posted', 'check')
           }}
         />
       </Sheet>
@@ -166,10 +165,10 @@ function PollCard({ poll, me, isHost, onVote, onClose }: { poll: Poll; me: strin
   return (
     <div className="card stack gap-10">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <span className="eyebrow">{poll.closed ? 'settled' : 'poll'} · {plural(total, 'vote')}</span>
+        <span className="eyebrow">{poll.closed ? 'closed' : 'poll'} · {plural(total, 'vote')}</span>
         {isHost && !poll.closed && (
           <button type="button" className="text-btn" onClick={onClose}>
-            settle it
+            close
           </button>
         )}
       </div>
@@ -230,9 +229,8 @@ function PollForm({ onSave }: { onSave: (question: string, options: string[]) =>
         if (ok) onSave(q.trim(), clean)
       }}
     >
-      <p className="small muted">For the things the group would otherwise settle over outside texts: where after, which night, whose place.</p>
-      <div className="field">
-        <label htmlFor="pq">the question</label>
+            <div className="field">
+        <label htmlFor="pq">question</label>
         <input id="pq" className="input" value={q} placeholder="after dinner?" autoFocus onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="stack gap-8">
@@ -242,12 +240,12 @@ function PollForm({ onSave }: { onSave: (question: string, options: string[]) =>
         ))}
         {opts.length < 4 && (
           <button type="button" className="text-btn lime" style={{ alignSelf: 'flex-start' }} onClick={() => setOpts([...opts, ''])}>
-            one more option
+            add option
           </button>
         )}
       </div>
       <button type="submit" className="btn btn-primary" disabled={!ok}>
-        ask
+        post
       </button>
     </form>
   )

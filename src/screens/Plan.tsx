@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { actorId, canSee, goingIds, isHostOf, messagesFor, now, person, rsvpOf, seatsLeft, ticketOf, uid, useStore, waitlistIds } from '../lib/store'
-import { icsStamp, isPast, longWhen, money, namesLine, plural, relative, time, when, clock } from '../core/format'
+import { icsStamp, isPast, money, namesLine, plural, relative, time, when, clock } from '../core/format'
 import type { Plan as PlanT } from '../core/types'
 import { download, share } from '../lib/pwa'
 import { Cover } from '../components/Cover'
@@ -67,8 +67,7 @@ export function Plan() {
       <div className="screen">
         <TopBar back="/" />
         <div className="pad stack gap-12">
-          <h1 className="title">that link went nowhere</h1>
-          <p className="body muted">The plan was deleted, or the link was typed wrong. Ask whoever sent it.</p>
+          <h1 className="title">this plan is gone</h1>
         </div>
       </div>
     )
@@ -97,12 +96,12 @@ export function Plan() {
   const doShare = async () => {
     const r = await share({ title: plan.title, text: `${host.name} is hosting ${plan.title}, ${when(plan.startsAt)}`, url: shareUrl })
     if (r === 'copied') toast('link copied', 'link')
-    else if (r === 'failed') toast("couldn't share from here")
+    else if (r === 'failed') toast("couldn't share")
   }
 
   const needIdentity = (then: 'going' | 'waitlist') => {
     if (previewing) {
-      toast('previewing: nothing saved', 'eye')
+      toast('preview only', 'eye')
       return true
     }
     if (identified) return false
@@ -133,7 +132,7 @@ export function Plan() {
       window.clearTimeout(burstTimer.current)
       burstTimer.current = window.setTimeout(() => setBurst(false), 900)
     } else {
-      toast("you're on the list. we'll text you if a seat opens", 'check')
+      toast('on the waitlist', 'check')
     }
   }
 
@@ -148,7 +147,7 @@ export function Plan() {
 
   const addToCalendar = () => {
     download(`${plan.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.ics`, ics(plan, host.name))
-    toast('calendar file ready', 'calendar')
+    toast('added', 'calendar')
   }
 
   /* ---------- forwarded link: public preview only ---------- */
@@ -174,15 +173,14 @@ export function Plan() {
             </span>
           </div>
           <div className="card stack gap-10">
-            <p className="body">This one's for specific people, and this link doesn't know you{identified ? '' : ' yet'}.</p>
-            <p className="small muted">The address, who's going, and the host's notes stay hidden until {host.name} adds you.</p>
+            <p className="body">you're not on the list{identified ? '' : ' yet'}.</p>
             {identified ? (
-              <button type="button" className="btn btn-primary mt-8" onClick={() => toast(`we let ${host.name} know you'd like in`, 'send')}>
-                ask {host.name} for an invite
+              <button type="button" className="btn btn-primary mt-8" onClick={() => toast(`asked ${host.name}`, 'send')}>
+                ask {host.name}
               </button>
             ) : (
               <button type="button" className="btn btn-primary mt-8" onClick={() => (mode === 'remote' ? nav(`/login?next=${encodeURIComponent(`/p/${plan.id}`)}`) : setIdentity(true))}>
-                sign in, maybe you're on the list
+                sign in
               </button>
             )}
           </div>
@@ -213,12 +211,12 @@ export function Plan() {
       />
       {previewing && (
         <div className="role-banner" role="status">
-          <span>previewing as a guest · nothing you tap here is saved</span>
+          <span>guest preview</span>
         </div>
       )}
       {plan.status === 'draft' && !previewing && (
         <div className="role-banner" role="status">
-          <span>draft · only you can see this</span>
+          <span>draft</span>
         </div>
       )}
 
@@ -316,10 +314,10 @@ export function Plan() {
         ) : isHost ? (
           <>
             <Link to={`/host/p/${plan.id}`} className="btn btn-going">
-              <Icon name="users" size={18} /> {plan.hostId === viewer ? "you're hosting" : "you're co-hosting"} · see who's in
+              <Icon name="users" size={18} /> see who's in
             </Link>
             <Link to={`/p/${plan.id}?preview=1`} className="btn btn-ghost btn-sm">
-              <Icon name="eye" size={16} /> preview as a guest
+              <Icon name="eye" size={16} /> guest view
             </Link>
           </>
         ) : youGoing ? (
@@ -346,22 +344,19 @@ export function Plan() {
         ) : rsvp?.status === 'offered' ? (
           <div className="card card-lime stack gap-10">
             <span className="eyebrow lime">a seat opened up</span>
-            <p className="body">
-              It's yours for the next {minutesLeft(rsvp.expiresAt)} minutes. After that it goes to {queue.length > 0 ? 'the next person in line' : 'whoever asks next'}.
-            </p>
+            <p className="body">yours for {minutesLeft(rsvp.expiresAt)} min.</p>
             <button type="button" className="btn btn-primary" onClick={() => (paid ? startCheckout() : dispatch({ type: 'acceptOffer', planId: plan.id, personId: viewer, at: now() }))}>
-              take the seat{paid ? ` · ${money(plan.cost)}` : ''}
+              take it{paid ? ` · ${money(plan.cost)}` : ''}
             </button>
             <button type="button" className="text-btn" style={{ alignSelf: 'center' }} onClick={() => dispatch({ type: 'withdraw', planId: plan.id, personId: viewer, at: now() })}>
-              pass, give it to the next person
+              pass
             </button>
           </div>
         ) : rsvp?.status === 'holding' ? (
           <div className="card card-lime stack gap-10">
-            <span className="eyebrow lime">seat held · {minutesLeft(rsvp.expiresAt)} min to finish</span>
-            <p className="body">Your seat is reserved while you pay. Nobody else can take it until the hold runs out.</p>
+            <span className="eyebrow lime">seat held · {minutesLeft(rsvp.expiresAt)} min</span>
             <Link to={`/p/${plan.id}/checkout`} className="btn btn-primary">
-              finish checkout · {money(plan.cost)}
+              pay {money(plan.cost)}
             </Link>
           </div>
         ) : rsvp?.status === 'waitlist' ? (
@@ -369,29 +364,24 @@ export function Plan() {
             <button type="button" className="btn btn-going">
               <Icon name="clock" size={18} /> you're #{queue.indexOf(viewer) + 1} on the waitlist
             </button>
-            <p className="small muted center">
-              {host.name} sees you next in line. You'll get a text if a seat opens, and 2 hours to take it.
-            </p>
+            <p className="small muted center">you'll get a text if a seat opens.</p>
             <button type="button" className="text-btn danger" style={{ alignSelf: 'center' }} onClick={() => dispatch({ type: 'withdraw', planId: plan.id, personId: viewer, at: now() })}>
               leave the waitlist
             </button>
           </>
         ) : rsvp?.status === 'expired' ? (
           <div className="card stack gap-10">
-            <span className="eyebrow">your seat offer lapsed</span>
-            <p className="body">The two hours ran out and the seat moved on. {full ? 'You can get back in line.' : 'There is a seat open right now.'}</p>
+            <span className="eyebrow">your offer lapsed</span>
+            <p className="body">the seat went to the next person.</p>
             <button type="button" className="btn btn-primary" onClick={() => commit(full ? 'waitlist' : 'going')}>
               {full ? 'back on the waitlist' : "i'm in"}
             </button>
           </div>
         ) : full ? (
           <div className="card stack gap-10">
-            <span className="eyebrow">this one's full</span>
-            <p className="body">
-              All {plan.capacity} seats are taken. {host.name} can bump capacity, or you can wait for a seat to open.
-            </p>
+            <span className="eyebrow">full</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => commit('waitlist')}>
-              join the waitlist{queue.length > 0 ? ` · ${queue.length} ahead of you` : ''}
+              join the waitlist{queue.length > 0 ? ` · ${queue.length} ahead` : ''}
             </button>
           </div>
         ) : (
@@ -402,7 +392,7 @@ export function Plan() {
               </button>
             </div>
             {rsvp?.status === 'declined' ? (
-              <p className="small muted center">you passed earlier. changed your mind? tap above.</p>
+              <p className="small muted center">you passed</p>
             ) : (
               <button
                 type="button"
@@ -411,7 +401,7 @@ export function Plan() {
                 onClick={() => {
                   if (needIdentity('going')) return
                   void dispatch({ type: 'rsvp', planId: plan.id, personId: viewer, status: 'declined', at: now() })
-                  toast(`told ${host.name} you can't make it`)
+                  toast(`told ${host.name}`)
                 }}
               >
                 can't make it
@@ -425,10 +415,10 @@ export function Plan() {
       {past && plan.status === 'published' && (youGoing || isHost || plan.photos.length > 0) && (
         <section className="section pad">
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
-            <span className="eyebrow">how it went · {plural(plan.photos.length, 'photo')}</span>
+            <span className="eyebrow">{plural(plan.photos.length, 'photo')}</span>
             {canPhoto && (
               <label className="text-btn lime" style={{ cursor: 'pointer' }}>
-                add a photo
+                add
                 <input
                   type="file"
                   accept="image/*"
@@ -449,7 +439,7 @@ export function Plan() {
             )}
           </div>
           {plan.photos.length === 0 ? (
-            <p className="small muted">no photos yet. the first one usually starts it.</p>
+            <p className="small muted">no photos yet</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
               {plan.photos.map((ph) => (
@@ -508,12 +498,12 @@ export function Plan() {
               <div className="row gap-6 eyebrow">
                 <Icon name="pin" size={13} stroke="#D0F08B" /> pinned by {host.name}
               </div>
-              <p className="body">Meeting details and the group chat show up here once you're in.</p>
+              <p className="body">details and chat unlock once you're in.</p>
             </div>
           )}
           {(youGoing || isHost) &&
             (msgs.length === 0 ? (
-              <p className="small muted">quiet so far.</p>
+              <p className="small muted">no messages yet</p>
             ) : (
               <div className="stack gap-8 mt-8">
                 {msgs.slice(-2).map((m) => {
@@ -535,7 +525,7 @@ export function Plan() {
         </section>
       )}
 
-      <Sheet open={identity} onClose={() => setIdentity(false)} title="so we can save your spot">
+      <Sheet open={identity} onClose={() => setIdentity(false)} title="your name">
         <IdentityForm
           onDone={(name, phone) => {
             void dispatch({ type: 'you', patch: { name, phone } })
@@ -548,10 +538,7 @@ export function Plan() {
       </Sheet>
 
       <Sheet open={leaving} onClose={() => setLeaving(false)} title="can't make it?">
-        <p className="body muted">
-          {host.name} gets a heads-up and your seat goes to the next person on the list.
-          {ticket?.status === 'paid' ? ` ${host.name} can refund your $${ticket.amount}.` : ' You can come back if plans change again.'}
-        </p>
+        <p className="body muted">your seat goes to the next person.{ticket?.status === 'paid' ? ` ${host.name} can refund your $${ticket.amount}.` : ''}</p>
         <div className="stack gap-10 mt-16">
           <button
             type="button"
@@ -559,20 +546,17 @@ export function Plan() {
             onClick={() => {
               void dispatch({ type: 'withdraw', planId: plan.id, personId: viewer, at: now() })
               setLeaving(false)
-              toast(`told ${host.name} you're out`)
+              toast(`told ${host.name}`)
             }}
           >
-            yep, i'm out
+            i'm out
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => setLeaving(false)}>
-            never mind, still going
+            still going
           </button>
         </div>
       </Sheet>
 
-      <p className="pad eyebrow mt-32 center" style={{ opacity: 0.6 }}>
-        {longWhen(plan.startsAt)} · {plan.timeZone.replace('_', ' ')} · v{plan.revision}
-      </p>
       {!isHost && <span className="sr-only">{youGoing ? 'You are going.' : 'You have not responded.'}</span>}
     </div>
   )
@@ -611,15 +595,15 @@ export function PinnedNote({ plan, hostName, onCalendar, className = '' }: { pla
           <Icon name="pin" size={13} stroke="#D0F08B" /> pinned by {hostName}
         </div>
         <p className="body" style={{ fontSize: 17 }}>
-          {plan.hostNote || 'No meeting note yet.'}
+          {plan.hostNote || 'no note yet'}
         </p>
         <div className="row gap-16 mt-8">
           <a className="text-btn lime" href={maps} target="_blank" rel="noopener noreferrer">
-            get directions
+            directions
           </a>
           {onCalendar && (
             <button type="button" className="text-btn lime" onClick={onCalendar}>
-              add to calendar
+              calendar
             </button>
           )}
         </div>
@@ -628,7 +612,7 @@ export function PinnedNote({ plan, hostName, onCalendar, className = '' }: { pla
   )
 }
 
-export function IdentityForm({ onDone, hostName }: { onDone: (name: string, phone: string) => void; hostName: string }) {
+export function IdentityForm({ onDone }: { onDone: (name: string, phone: string) => void; hostName: string }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const ok = name.trim().length > 0
@@ -640,18 +624,17 @@ export function IdentityForm({ onDone, hostName }: { onDone: (name: string, phon
         if (ok) onDone(name.trim(), phone.trim())
       }}
     >
-      <p className="small muted">Just enough for {hostName} to know who's coming and for you to find this RSVP again. No account, no password.</p>
-      <div className="field">
-        <label htmlFor="id-name">your name</label>
+            <div className="field">
+        <label htmlFor="id-name">name</label>
         <input id="id-name" className="input" autoFocus autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="what people call you" />
       </div>
       <div className="field">
-        <label htmlFor="id-phone">phone, for day-of texts</label>
+        <label htmlFor="id-phone">phone</label>
         <input id="id-phone" className="input" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" />
-        <span className="hint">only used if the plan changes. never shared with other guests.</span>
+        <span className="hint">for changes on the day</span>
       </div>
       <button type="submit" className="btn btn-primary" disabled={!ok}>
-        save my spot
+        i'm in
       </button>
     </form>
   )

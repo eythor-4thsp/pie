@@ -31,7 +31,7 @@ export function HostHome() {
       <div className="pad stack gap-8">
         <h1 className="title">{me === 'you' ? 'your plans' : `${name}'s dinners`}</h1>
         <p className="body muted">
-          {upcoming.length > 0 ? `${plural(upcoming.length, 'dinner')} coming up` : "nothing scheduled. that's fixable."}
+          {upcoming.length > 0 ? `${plural(upcoming.length, 'dinner')} coming up` : 'nothing scheduled'}
           {drafts.length > 0 ? ` · ${plural(drafts.length, 'draft')}` : ''}
         </p>
       </div>
@@ -51,20 +51,17 @@ export function HostHome() {
         <SectionTitle>coming up</SectionTitle>
         {upcoming.length === 0 ? (
           <Empty>
-            no dinners on the books.{' '}
             <Link to="/host/new" className="lime">
               make a plan
             </Link>
             {owned[0] && (
               <>
-                {' '}
-                or{' '}
+                {' · '}
                 <Link to={`/host/again/${owned[0].id}`} className="lime">
                   plan {owned[0].title} again
                 </Link>
               </>
             )}
-            .
           </Empty>
         ) : (
           <div className="stack gap-12">
@@ -76,7 +73,7 @@ export function HostHome() {
       </section>
 
       <section className="section pad">
-        <SectionTitle>the group</SectionTitle>
+        <SectionTitle>club</SectionTitle>
         {club ? (
           <Link to={`/club/${club.id}`} className="card-link">
             <div className="card row gap-12">
@@ -84,7 +81,7 @@ export function HostHome() {
                 <span className="h3">{club.name}</span>
                 <span className="eyebrow">
                   {plural(club.memberIds.length, 'member')} · {club.cadence}
-                  {pendingRequests > 0 ? ` · ${plural(pendingRequests, 'request')} waiting` : ''}
+                  {pendingRequests > 0 ? ` · ${plural(pendingRequests, 'request')}` : ''}
                 </span>
               </div>
               {pendingRequests > 0 ? <span className="chip lime">{pendingRequests}</span> : <Icon name="back" size={16} style={{ transform: 'rotate(180deg)', color: 'var(--muted)' }} />}
@@ -95,7 +92,7 @@ export function HostHome() {
             <div className="card row gap-12">
               <div className="stack gap-4 grow">
                 <span className="h3">start a club</span>
-                <span className="hint">{owned.length > 0 ? 'you have run one. give the group a place to come back to.' : 'after your first dinner, a club is where the group comes back to.'}</span>
+                <span className="hint">a home for the group between dinners</span>
               </div>
               <Icon name="plus" size={18} stroke="#D0F08B" />
             </div>
