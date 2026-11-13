@@ -61,8 +61,8 @@ export class Db {
 
   createUser(u: User): void {
     this.db
-      .prepare('insert into users (id, phone, name, tone, created_at, show_faces) values (?, ?, ?, ?, ?, ?)')
-      .run(u.id, u.phone, u.name, u.tone, u.createdAt, u.showFaces ? 1 : 0)
+      .prepare('insert into users (id, phone, name, tone, created_at, show_faces, follows) values (?, ?, ?, ?, ?, ?, ?)')
+      .run(u.id, u.phone, u.name, u.tone, u.createdAt, u.showFaces ? 1 : 0, JSON.stringify(u.follows))
   }
 
   updateUser(id: string, patch: Partial<Pick<User, 'name' | 'showFaces' | 'follows'>> & { optOut?: boolean; blocked?: boolean }): void {

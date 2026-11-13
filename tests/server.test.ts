@@ -212,4 +212,5 @@ test('following is per person and drives familiar faces both ways', async () => 
   await priya.act({ type: 'you', patch: { showFaces: false } })
   const seen = (await guest.state()).data
   assert.equal(seen.people['priya'].hideFace, true, 'Priya asked not to be shown')
+  assert.ok(seen.you.followIds.includes('maya'), 'the seeded guest follows the host from the start')
 })
