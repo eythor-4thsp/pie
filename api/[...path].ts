@@ -23,11 +23,17 @@ const publicUrl = process.env.PUBLIC_URL ?? (process.env.VERCEL_PROJECT_PRODUCTI
 const app = url ? createApp({ store: new PgStore(url), sms: makeSms(process.env), publicUrl, seed: process.env.SEED !== '0' }) : null
 
 export default async function handler(req: VercelReq, res: VercelRes): Promise<void> {
+  const parsed = new URL(req.url ?? '/', publicUrl)
   if (!app) {
+    // No database yet: shared links still open the app, which runs in local demo mode on its own.
+    if (parsed.pathname.replace(/\/$/, '') === '/api/preview') {
+      const id = parsed.searchParams.get('id') ?? ''
+      res.status(302).setHeader('Location', `/#/p/${encodeURIComponent(id)}`).send('')
+      return
+    }
     res.status(404).setHeader('Content-Type', 'application/json').send(JSON.stringify({ error: 'no database configured; the app runs in local mode' }))
     return
   }
-  const parsed = new URL(req.url ?? '/', publicUrl)
   let body: Record<string, unknown> | null = null
   if (req.body && typeof req.body === 'object') body = req.body as Record<string, unknown>
   else if (typeof req.body === 'string' && req.body) {
