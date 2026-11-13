@@ -23,7 +23,7 @@ npm run server       # pilot server at http://localhost:8787, serving dist/ and 
 npm test             # reducer tests and an end-to-end server test
 ```
 
-Production: `npm run build && npm run build:server && npm start`, or the Dockerfile. Copy `.env.example` to `.env`; without Twilio values the server runs in demo mode and shows login codes in the app. See `docs/pilot.md` for the pilot runbook and the measurement definitions.
+Production on Vercel: the repo is a Vercel project (static PWA plus one function under `api/`). Connect a Neon Postgres database from the project's Storage tab and set `PUBLIC_URL`; see `docs/pilot.md`. Self-hosted: `npm run build && npm run build:server && npm start` (SQLite, or Postgres with `DATABASE_URL`), or the Dockerfile. Copy `.env.example` to `.env`; without Twilio values the server runs in demo mode and shows login codes in the app. See `docs/pilot.md` for the pilot runbook and the measurement definitions.
 
 ## What's in it
 
@@ -41,7 +41,7 @@ Production: `npm run build && npm run build:server && npm start`, or the Dockerf
 | Paid gatherings: seat held during checkout, one charge to one ticket to one seat, declined cards release the hold, host refunds, text receipt | `src/screens/Checkout.tsx`, `reducer.ts` |
 | Organizer insights: seats filled, show-up rate, guest conversion, new vs returning, host effort from the debrief, repeat attendance, compare two dinners, discovery supply gate | `src/screens/Insights.tsx`, `src/core/metrics.ts` |
 | Host debrief and attendance reconciliation after each dinner | `Roster.tsx` |
-| Phone sign-in, sessions, personalized state, access rules, SQLite persistence, audit log, SMS transport | `server/` |
+| Phone sign-in, sessions, personalized state, access rules, audit log, SMS transport; SQLite for one machine, Postgres with compare-and-swap for serverless | `server/app.ts`, `server/store-*.ts`, `api/` |
 | Nudge a pending guest once a day; see who opened the link; revoke an invitation and recheck access | `Roster.tsx`, `reducer.ts` |
 | Reminder texts the day before and two hours before, sent once by the server clock (or on demand) | `dueReminders` in `select.ts`, `server/index.ts` |
 | Polls in the thread for decisions the group would otherwise settle over outside texts; photos after the dinner | `src/screens/Thread.tsx`, `Plan.tsx` |

@@ -10,7 +10,18 @@ This is the runbook for the Weeks 2 to 6 pilot: one organizer with a real recurr
 - **Changes are saved before they are sent.** A day-of change writes the plan, then queues one text per confirmed guest, then records sent or failed per person. Retry resends only the failures. The original link always shows the current details or the cancellation.
 - **Audit.** Every applied action is recorded with its actor and time in the `audit` table.
 
-## Set up
+## Set up on Vercel
+
+The repository deploys as a Vercel project: the PWA is static output, the API is one serverless function under `api/`, and `/p/:id` links are rewritten to the preview route. The function needs a Postgres database:
+
+1. In the Vercel project, open Storage and create a Neon Postgres database (the Neon Marketplace integration is installed on the team). Connect it to the project; that sets `DATABASE_URL`.
+2. Set `PUBLIC_URL` to the production domain so texts carry the right link. `SEED=1` fills an empty database with the fictional club; set `SEED=0` for a clean pilot.
+3. Add the Twilio values for real texts, or leave them out for demo mode.
+4. Redeploy. Until a database is connected, the API answers 404 and the app runs in local demo mode on its own.
+
+Writes use compare-and-swap on a single world document, so two function instances racing for the last seat still produce one confirmation. Offers expire and reminders go out on every read, so no cron is needed.
+
+## Set up on your own machine
 
 ```bash
 cp .env.example .env            # fill in PUBLIC_URL and, for real texts, the Twilio values
